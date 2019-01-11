@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.vonchenchen.mediacodecdemo.MainActivity">
+
+    <SurfaceView
+        android:id="@+id/sv_cam"
+        android:layout_width="320dp"
+        android:layout_height="240dp" />
+    <LinearLayout
+        android:id="@+id/ll_cam_ctl"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/sv_cam"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btn_cam"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_below="@id/sv_cam"
+            android:text="cam start"/>
+
+        <Button
+            android:id="@+id/btn_enc"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_below="@id/sv_cam"
+            android:text="enc start"/>
+
+        <Button
+            android:id="@+id/btn_play"
+            android:layout_width="80dp"
+            android:layout_height="40dp"
+            android:text="play"/>
+    </LinearLayout>
+
+    <SurfaceView
+        android:id="@+id/sv_playvp8"
+        android:layout_width="320dp"
+        android:layout_height="240dp"
+        android:layout_toRightOf="@id/sv_cam"
+        android:layout_marginLeft="50dp"/>
+
+    <Button
+        android:id="@+id/btn_playvp8"
+        android:layout_width="80dp"
+        android:layout_height="40dp"
+        android:layout_toRightOf="@id/sv_cam"
+        android:layout_below="@id/sv_playvp8"
+        android:layout_marginLeft="50dp"
+        android:text="play vp8"/>
+
+</RelativeLayout>
