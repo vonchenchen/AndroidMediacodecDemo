@@ -56,7 +56,7 @@ public class CircularEncoder {
     private static final String TAG = "CircularEncoder";
     private static final boolean VERBOSE = false;
 
-    private static final String VIDEO_MIME_TYPE = "video/avc";    // H.264 Advanced Video Coding
+    private static String VIDEO_MIME_TYPE = "video/avc";    // H.264 Advanced Video Coding
     private static final int I_FRAME_INTERVAL = 1;           // sync frame every second
 
     private VideoEncoderThread mVideoEncoderThread;
@@ -79,12 +79,12 @@ public class CircularEncoder {
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
     public CircularEncoder(int width, int height, int frameRate)
     		throws IOException {
-        this(width , height , frameRate , true);
+        this(width , height , frameRate , VIDEO_MIME_TYPE, true);
 
     }
 
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-    public CircularEncoder(int width, int height, int frameRate , boolean hd)
+    public CircularEncoder(int width, int height, int frameRate , String mimeType, boolean hd)
             throws IOException {
         mHDBuffer = hd;
         // The goal is to size the buffer so that we can accumulate N seconds worth of video,
@@ -111,10 +111,8 @@ public class CircularEncoder {
         mVideoEncoderThread = new VideoEncoderThread(mVideoEncoder , width + "_" + height);
         mVideoEncoderThread.start();
 
-
         mVideoEncoderThread.waitUntilReady();
     }
-
 
     public int  getWidth() {
         return mVideoWidth;
@@ -127,11 +125,15 @@ public class CircularEncoder {
 
     public int getBitrate() {
         if(mVideoWidth * mVideoHeight == 1280 * 720) {
-            return 200 * 1024;
+            return 1000 * 1024;
         }
 
         if(mVideoWidth * mVideoHeight == 1920 * 1080) {
-            return 1200 * 1024;
+            return 2000 * 1024;
+        }
+
+        if(mVideoWidth * mVideoHeight == 3840 * 2160) {
+            return 4000 * 1024;
         }
 
         return 400 * 1024;

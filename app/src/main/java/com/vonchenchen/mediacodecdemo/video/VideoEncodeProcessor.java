@@ -24,7 +24,17 @@ public class VideoEncodeProcessor {
         mPath = outPath;
     }
 
-    public void startCapture(Context context, SurfaceHolder surfaceHolder, int width, int height, int frameRate){
+    /**
+     * 开始采集并渲染和编码
+     * @param context
+     * @param surfaceHolder
+     * @param width    图像宽度
+     * @param height   图像高度
+     * @param displayViewWidth    图像view宽度
+     * @param displayViewHeight   图像view高度
+     * @param frameRate
+     */
+    public void startCapture(Context context, SurfaceHolder surfaceHolder, int width, int height, int displayViewWidth, int displayViewHeight, int frameRate){
 
         surfaceHolder.addCallback(new SurfaceHolder.Callback() {
             @Override
@@ -49,12 +59,12 @@ public class VideoEncodeProcessor {
             e.printStackTrace();
         }
 
-        initGLThread(context, surfaceHolder, width, height, frameRate);
+        initGLThread(context, surfaceHolder, width, height, displayViewWidth, displayViewHeight,frameRate);
     }
 
-    private void initGLThread(Context context, SurfaceHolder surfaceHolder, int width, int height, int frameRate){
+    private void initGLThread(Context context, SurfaceHolder surfaceHolder, int width, int height, int displayViewWidth, int displayViewHeight, int frameRate){
         if(surfaceHolder.getSurface().isValid()){
-            mGLThread = new GLThread(context, surfaceHolder, width, height, frameRate, new CircularEncoder.OnCricularEncoderEventListener() {
+            mGLThread = new GLThread(context, surfaceHolder, width, height, displayViewWidth, displayViewHeight,frameRate, new CircularEncoder.OnCricularEncoderEventListener() {
                 @Override
                 public void onConfigFrameReceive(byte[] data, int length) {
                     mMediaDataWriter.write(data, length);

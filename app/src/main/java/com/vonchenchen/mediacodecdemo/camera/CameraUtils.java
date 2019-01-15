@@ -2,9 +2,13 @@ package com.vonchenchen.mediacodecdemo.camera;
 
 import android.hardware.Camera;
 
+import com.vonchenchen.mediacodecdemo.video.Logger;
+
 import java.util.List;
 
 public class CameraUtils {
+
+    private static final String TAG = "CameraUtils";
 
     public static Camera.Size getLargePictureSize(Camera camera){
         if(camera != null){

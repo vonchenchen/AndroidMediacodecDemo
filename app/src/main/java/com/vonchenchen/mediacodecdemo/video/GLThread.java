@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.SurfaceTexture;
 import android.graphics.SurfaceTexture.OnFrameAvailableListener;
+import android.media.MediaFormat;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.os.Handler;
@@ -51,6 +52,9 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
     private int mCaptureWidth;
     private int mCaptureHeight;
 
+    private int mDisplayViewWidth;
+    private int mDisplayViewHeight;
+
 	private int mFrameRate;
 
 	private int count = 0;
@@ -68,6 +72,17 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 
 	private SurfaceHolder mSurfaceHolder;
 	private int mFrameCount = 0;
+
+	private float[] mBaseScaleVertexBuf = {
+			// 0 bottom left
+			-1.0f, -1.0f,
+			// 1 bottom right
+			1.0f, -1.0f,
+			// 2 top left
+			-1.0f,  1.0f,
+			// 3 top right
+			1.0f,  1.0f,
+	};
 
 	@Override
 	public void surfaceCreated(SurfaceHolder holder) {
@@ -108,7 +123,7 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
         }
 	}
 
-	public GLThread(Context context, SurfaceHolder surfaceHolder , int width , int height, int frameRate, CircularEncoder.OnCricularEncoderEventListener listener) {
+	public GLThread(Context context, SurfaceHolder surfaceHolder , int width , int height, int displayViewWidth, int displayViewHeight, int frameRate, CircularEncoder.OnCricularEncoderEventListener listener) {
 		super("GLThread");
 
 		mSurfaceHolder = surfaceHolder;
@@ -117,6 +132,8 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 		mSurfaceReady = mSurface.isValid();
 		mCaptureWidth = width;
 		mCaptureHeight = height;
+		mDisplayViewWidth = displayViewWidth;
+		mDisplayViewHeight = displayViewHeight;
 		mFrameRate = frameRate;
 
 		Matrix.setIdentityM(mEncodeTextureMatrix, 0);
@@ -135,7 +152,7 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 
 	private void initEncoder(CircularEncoder.OnCricularEncoderEventListener listener){
 		try {
-			mEncoder = new CircularEncoder(mCaptureWidth , mCaptureHeight , mFrameRate ,true);
+			mEncoder = new CircularEncoder(mCaptureWidth , mCaptureHeight , mFrameRate, MediaFormat.MIMETYPE_VIDEO_AVC,true);
 			mEncoder.setOnCricularEncoderEventListener(listener);
 		} catch (IOException e) {
 			Logger.printErrStackTrace(TAG, e, "initEncoder");
@@ -239,10 +256,42 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
         mCameraTexture.updateTexImage();
         mCameraTexture.getTransformMatrix(mCameraMVPMatrix);
         // Fill the SurfaceView with it.
-		GLES20.glViewport(0, 0, mCaptureWidth, mCaptureHeight);
+		//GLES20.glViewport(0, 0, mCaptureWidth, mCaptureHeight);
+		GLES20.glViewport(0, 0, mDisplayViewWidth, mDisplayViewHeight);
 
-        mInternalTexDrawer.drawFrame(mTextureId, mCameraMVPMatrix);
+		//将采集到的视频按比例缩放到窗口中
+		ScaleUtils.Param param = ScaleUtils.getScale(mDisplayViewWidth, mDisplayViewHeight, mCaptureWidth, mCaptureHeight);
+		float[] drawMatrix = new float[8];
+		float scaleWidth = ((float) param.width)/mDisplayViewWidth;
+		float scaleHeight = ((float) param.height)/mDisplayViewHeight;
+		if(scaleWidth == 1){
+			float halfHeight = scaleHeight;
+			drawMatrix[0] = -1;
+			drawMatrix[1] = -halfHeight;
+			drawMatrix[2] = 1;
+			drawMatrix[3] = -halfHeight;
+			drawMatrix[4] = -1;
+			drawMatrix[5] = halfHeight;
+			drawMatrix[6] = 1;
+			drawMatrix[7] = halfHeight;
+		}else{
+			float halfWidth = scaleWidth;
+			drawMatrix[0] = -halfWidth;
+			drawMatrix[1] = -1;
+			drawMatrix[2] = halfWidth;
+			drawMatrix[3] = -1;
+			drawMatrix[4] = -halfWidth;
+			drawMatrix[5] = 1;
+			drawMatrix[6] = halfWidth;
+			drawMatrix[7] = 1;
+		}
+		mInternalTexDrawer.rescaleDrawRect(drawMatrix);
+		mInternalTexDrawer.drawFrame(mTextureId, mCameraMVPMatrix);
+
 		mDisplaySurface.swapBuffers();
+
+		//Logger.i("lidechen_test", "test1 scaleWidth="+scaleWidth+" scaleHeight="+scaleHeight);
+		//mDisplaySurface.readImageTest();
 
 		mFrameCount ++;
 
@@ -263,11 +312,16 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 			GLES20.glViewport(0, 0, mHDEncoder.getWidth() , mHDEncoder.getHeight());
 			// 如果是横屏 不需要设置
 			Matrix.multiplyMM(mTmp2Matrix, 0, mCameraMVPMatrix, 0, mEncodeTextureMatrix, 0);
+			// 恢复为基本scale
+			mInternalTexDrawer.rescaleDrawRect(mBaseScaleVertexBuf);
 			// 下面往编码器绘制数据
 			mInternalTexDrawer.drawFrame(mTextureId, mTmp2Matrix);
 			mHDEncoder.frameAvailableSoon();
 			mHDEncoderSurface.setPresentationTime(mCameraTexture.getTimestamp());
 			mHDEncoderSurface.swapBuffers();
+
+			Logger.i("lidechen_test", "test2");
+			//mHDEncoderSurface.readImageTest();
 		}
 
 		/********* draw to mix encoder **********/
@@ -282,6 +336,8 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 			GLES20.glViewport(0, 0, mEncoder.getWidth() , mEncoder.getHeight());
 			// 如果是横屏 不需要设置
 			Matrix.multiplyMM(mTmp3Matrix, 0, mCameraMVPMatrix, 0, mEncodeTextureMatrix, 0);
+			// 恢复为基本scale
+			mInternalTexDrawer.rescaleDrawRect(mBaseScaleVertexBuf);
 			// 下面往编码器绘制数据  mEncoderSurface中维护的egl环境中的win就是 mEncoder中MediaCodec中的surface
 			// 也就是说这一步其实是往编码器MediaCodec中放入了数据
 			mInternalTexDrawer.drawFrame(mTextureId, mTmp3Matrix);
@@ -289,6 +345,16 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 			mEncoder.frameAvailableSoon();
 			mEncoderSurface.setPresentationTime(mCameraTexture.getTimestamp());
 			mEncoderSurface.swapBuffers();
+
+//			File file = new File("/sdcard/test.png");
+//			try {
+//				mEncoderSurface.saveFrame(file);
+//			} catch (IOException e) {
+//				e.printStackTrace();
+//			}
+
+			Logger.i("lidechen_test", "test3");
+			//mEncoderSurface.readImageTest();
 		}
 
 	}

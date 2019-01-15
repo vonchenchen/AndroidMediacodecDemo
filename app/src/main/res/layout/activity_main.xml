@@ -66,4 +66,15 @@
         android:layout_marginLeft="50dp"
         android:text="play vp8"/>
 
+    <ImageView
+        android:id="@+id/iv_test"
+        android:layout_width="300dp"
+        android:layout_height="300dp"
+        android:layout_below="@id/btn_playvp8"/>
+    <Button
+        android:id="@+id/btn_diplay_rgb"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/iv_test"
+        android:text="diplay rgb"/>
 </RelativeLayout>

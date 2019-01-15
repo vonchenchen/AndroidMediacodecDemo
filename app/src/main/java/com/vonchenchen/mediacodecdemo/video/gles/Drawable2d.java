@@ -149,6 +149,10 @@ public class Drawable2d {
         return mVertexArray;
     }
 
+    public void setVertexArray(float[] vertexBuf){
+        mVertexArray = GlUtil.createFloatBuffer(vertexBuf);
+    }
+
     /**
      * Returns the array of texture coordinates.
      * <p>

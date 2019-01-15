@@ -17,6 +17,7 @@
 package com.vonchenchen.mediacodecdemo.video.egl;
 
 import android.graphics.Bitmap;
+import android.graphics.Matrix;
 import android.opengl.EGL14;
 import android.opengl.EGLSurface;
 import android.opengl.GLES20;
@@ -25,6 +26,8 @@ import com.vonchenchen.mediacodecdemo.video.Logger;
 import com.vonchenchen.mediacodecdemo.video.gles.GlUtil;
 
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -179,14 +182,20 @@ public class EglSurfaceBase {
         int height = getHeight();
         ByteBuffer buf = ByteBuffer.allocateDirect(width * height * 4);
         buf.order(ByteOrder.LITTLE_ENDIAN);
-        GLES20.glReadPixels(0, 0, width, height,
-                GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf);
+
+        long testStart = System.currentTimeMillis();
+        GLES20.glReadPixels(0, 0, width, height, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf);
+        long testEnd = System.currentTimeMillis();
+        Logger.i("lidechen_test", "spend time="+(testEnd - testStart));
+
         GlUtil.checkGlError("glReadPixels");
         buf.rewind();
 
         BufferedOutputStream bos = null;
         try {
             bos = new BufferedOutputStream(new FileOutputStream(filename));
+            Matrix m = new Matrix();
+            m.postRotate(180);
             Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
             bmp.copyPixelsFromBuffer(buf);
             bmp.compress(Bitmap.CompressFormat.PNG, 90, bos);
@@ -195,5 +204,71 @@ public class EglSurfaceBase {
             if (bos != null){ bos.close();}
         }
         Logger.d(TAG, "Saved " + width + "x" + height + " frame as '" + filename + "'");
+    }
+
+    public Bitmap getBitmap(){
+
+        if (!mEglCore.isCurrent(mEGLSurface)) {
+            throw new RuntimeException("Expected EGL context/surface is not current");
+        }
+
+        // glReadPixels fills in a "direct" ByteBuffer with what is essentially big-endian RGBA
+        // data (i.e. a byte of red, followed by a byte of green...).  While the Bitmap
+        // constructor that takes an int[] wants little-endian ARGB (blue/red swapped), the
+        // Bitmap "copy pixels" method wants the same format GL provides.
+        //
+        // Ideally we'd have some way to re-use the ByteBuffer, especially if we're calling
+        // here often.
+        //
+        // Making this even more interesting is the upside-down nature of GL, which means
+        // our output will look upside down relative to what appears on screen if the
+        // typical GL conventions are used.
+
+        int width = getWidth();
+        int height = getHeight();
+        ByteBuffer buf = ByteBuffer.allocateDirect(width * height * 4);
+        buf.order(ByteOrder.LITTLE_ENDIAN);
+        GLES20.glReadPixels(0, 0, width, height, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf);
+        GlUtil.checkGlError("glReadPixels");
+        buf.rewind();
+
+        Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        bmp.copyPixelsFromBuffer(buf);
+
+        return bmp;
+    }
+
+    public void readImageTest(){
+
+        long testTotleStart = System.currentTimeMillis();
+
+        int width = getWidth();
+        int height = getHeight();
+        ByteBuffer buf = ByteBuffer.allocateDirect(width * height * 4);
+        buf.order(ByteOrder.LITTLE_ENDIAN);
+        Logger.i("lidechen_test", "width="+width+" height="+height);
+
+        long testStart = System.currentTimeMillis();
+        GLES20.glReadPixels(0, 0, width, height, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf);
+        long testEnd = System.currentTimeMillis();
+        Logger.i("lidechen_test", "glReadPixels spend time="+(testEnd - testStart));
+
+        GlUtil.checkGlError("glReadPixels");
+        buf.rewind();
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(width * height * 3);
+        //Matrix m = new Matrix();
+        //m.postRotate(180);
+
+        long test1Start = System.currentTimeMillis();
+        Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        bmp.copyPixelsFromBuffer(buf);
+        bmp.compress(Bitmap.CompressFormat.JPEG, 90, bos);
+        bmp.recycle();
+        long test1End = System.currentTimeMillis();
+        Logger.i("lidechen_test", "create bitmap and compress spend time="+(test1End - test1Start));
+
+        long testTotleEnd = System.currentTimeMillis();
+        Logger.i("lidechen_test", "totle spend time="+(testTotleEnd - testTotleStart));
     }
 }

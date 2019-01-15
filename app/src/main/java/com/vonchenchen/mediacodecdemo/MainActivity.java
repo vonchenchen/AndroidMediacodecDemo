@@ -1,5 +1,6 @@
 package com.vonchenchen.mediacodecdemo;
 
+import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
 import android.media.MediaFormat;
 import android.support.v7.app.AppCompatActivity;
@@ -8,6 +9,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.vonchenchen.mediacodecdemo.camera.CameraManager;
@@ -17,6 +19,8 @@ import com.vonchenchen.mediacodecdemo.video.VideoDecodeProcessor;
 import com.vonchenchen.mediacodecdemo.video.VideoEncodeProcessor;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity {
@@ -43,6 +47,11 @@ public class MainActivity extends AppCompatActivity {
     private SurfaceView mVp8PlaySurfaceView;
     private Button mPlayVp8Btn;
     private TextView mEncodeFrameRateText;
+    private ImageView mTestImage;
+    private Button mDisplayRgbBtn;
+
+    int mDisplayViewWidth;
+    int mDisplayViewHeight;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -126,9 +135,11 @@ public class MainActivity extends AppCompatActivity {
                     CameraManager.CamSizeDetailInfo info = CameraManager.getInstance().getCamSize(mCurrentSize);
                     mCaptureWidth = info.width;
                     mCaptureHeight = info.height;
+                    mDisplayViewWidth = mCamSurfaceView.getWidth();
+                    mDisplayViewHeight = mCamSurfaceView.getHeight();
 
                     SurfaceHolder surfaceholder = mCamSurfaceView.getHolder();
-                    mVideoEncodeProcessor.startCapture(MainActivity.this, surfaceholder, mCaptureWidth, mCaptureHeight, mFps);
+                    mVideoEncodeProcessor.startCapture(MainActivity.this, surfaceholder, mCaptureWidth, mCaptureHeight, mDisplayViewWidth, mDisplayViewHeight, mFps);
                     SurfaceTexture surfaceTexture = mVideoEncodeProcessor.getCameraTexture();
                     CameraManager.getInstance().startCapture(surfaceTexture);
 
@@ -187,6 +198,17 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPreview(int width, int height, byte[] data) {
                 Logger.i(TAG, "onPreview w "+width+" h "+height);
+            }
+        });
+
+        mTestImage = findViewById(R.id.iv_test);
+        mDisplayRgbBtn = findViewById(R.id.btn_diplay_rgb);
+
+        mDisplayRgbBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+
             }
         });
 

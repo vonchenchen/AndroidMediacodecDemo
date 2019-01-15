@@ -246,6 +246,8 @@ public class CameraManager {
             targetHeight = 720;
         }else if(size == CameraSize.SIZE_1080P){
             targetHeight = 1080;
+        }else if(size == CameraSize.SIZE_2160P){
+            targetHeight = 2160;
         }
 
         for(int i=0; i<list.size(); i++){
@@ -264,7 +266,9 @@ public class CameraManager {
     public enum CameraSize{
         SIZE_480P,
         SIZE_720P,
-        SIZE_1080P
+        SIZE_1080P,
+        /** 4K */
+        SIZE_2160P
     }
 
     public class CamSizeDetailInfo{

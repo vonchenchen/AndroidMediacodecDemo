@@ -77,6 +77,14 @@ public class FullFrameRect {
     }
 
     /**
+     * 将视频按比例缩放到窗口中
+     * @param vertexBuf
+     */
+    public void rescaleDrawRect(float[] vertexBuf){
+        mRectDrawable.setVertexArray(vertexBuf);
+    }
+
+    /**
      * Draws a viewport-filling rect, texturing it with the specified texture object.
      */
     public void drawFrame(int textureId, float[] texMatrix) {
