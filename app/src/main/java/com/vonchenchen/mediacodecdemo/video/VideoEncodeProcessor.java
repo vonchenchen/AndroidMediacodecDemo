@@ -18,6 +18,8 @@ public class VideoEncodeProcessor {
     private MediaDataWriter mMediaDataWriter;
     private String mPath;
 
+    private OnVideoEncodeEventListener mOnVideoEncodeEventListener = null;
+
     public VideoEncodeProcessor(String outPath){
         mPath = outPath;
     }
@@ -67,6 +69,14 @@ public class VideoEncodeProcessor {
                 public void onOtherFrameReceive(byte[] data, int length) {
                     mMediaDataWriter.write(data, length);
                 }
+
+                @Override
+                public void onFrameRateReceive(int frameRate) {
+
+                    if(mOnVideoEncodeEventListener != null){
+                        mOnVideoEncodeEventListener.onFrameRate(frameRate);
+                    }
+                }
             });
             mGLThread.start();
         }
@@ -84,5 +94,13 @@ public class VideoEncodeProcessor {
         if(mMediaDataWriter != null) {
             mMediaDataWriter.close();
         }
+    }
+
+    public void setOnVideoEncodeEventListener(OnVideoEncodeEventListener onVideoEncodeEventListener){
+        mOnVideoEncodeEventListener = onVideoEncodeEventListener;
+    }
+
+    public interface OnVideoEncodeEventListener{
+        void onFrameRate(int frameRate);
     }
 }

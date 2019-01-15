@@ -13,7 +13,7 @@ import java.nio.ByteBuffer;
 @TargetApi(Build.VERSION_CODES.KITKAT)
 public class CircularDecoder implements SurfaceHolder.Callback{
 
-    private static final String TAG = "ECDevice.CircularDecoderToSurface";
+    private static final String TAG = "CircularDecoderToSurface";
 
     private static final long DEFAULT_TIMEOUT_US = 1000000;
 

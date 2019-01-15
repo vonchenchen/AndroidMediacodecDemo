@@ -98,7 +98,8 @@ public class CameraManager {
         Camera.Size pictureSize = CameraUtils.getLargePictureSize(camera);
         parameters.setPictureSize(pictureSize.width, pictureSize.height);
         //parameters.setRotation(90);
-        parameters.setPreviewFrameRate(fps);
+        //parameters.setPreviewFrameRate(fps);
+        parameters.setPreviewFpsRange(fps-3, fps+3);
         parameters.setPreviewFormat(PIXEL_FORMAT);
 
         PixelFormat.getPixelFormatInfo(PIXEL_FORMAT, mPixelFormat);

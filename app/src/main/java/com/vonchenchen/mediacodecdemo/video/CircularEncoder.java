@@ -53,7 +53,7 @@ import java.nio.ByteBuffer;
  * and then go back to what we were doing.
  */
 public class CircularEncoder {
-    private static final String TAG = "ECDevice.CircularEncoder";
+    private static final String TAG = "CircularEncoder";
     private static final boolean VERBOSE = false;
 
     private static final String VIDEO_MIME_TYPE = "video/avc";    // H.264 Advanced Video Coding
@@ -65,6 +65,9 @@ public class CircularEncoder {
     private int mVideoWidth, mVideoHeight;
     private int mFrameRate;
     private boolean mHDBuffer ;
+
+    private long mRecTs;
+    private int mFrameCount = 0;
 
     /**
      * Configures encoder, and prepares the input Surface.
@@ -124,7 +127,7 @@ public class CircularEncoder {
 
     public int getBitrate() {
         if(mVideoWidth * mVideoHeight == 1280 * 720) {
-            return 700 * 1024;
+            return 200 * 1024;
         }
 
         if(mVideoWidth * mVideoHeight == 1920 * 1080) {
@@ -413,6 +416,17 @@ public class CircularEncoder {
                         if(mOnCricularEncoderEventListener != null){
                             mOnCricularEncoderEventListener.onKeyFrameReceive(outData, mBufferInfo.size);
                         }
+
+                        mFrameCount ++;
+                        long curr = System.currentTimeMillis();
+                        if(curr - mRecTs > 1000){
+                            if(mOnCricularEncoderEventListener != null){
+                                mOnCricularEncoderEventListener.onFrameRateReceive(mFrameCount);
+                            }
+                            mRecTs = curr;
+                            mFrameCount = 0;
+                        }
+
                     } else {
 
                         byte[] pFrame = new byte[outData.length - HEADER_LENGTH];
@@ -427,6 +441,16 @@ public class CircularEncoder {
                         if(mOnCricularEncoderEventListener != null){
                             mOnCricularEncoderEventListener.onOtherFrameReceive(outData, mBufferInfo.size);
                         }
+
+                        mFrameCount ++;
+                        long curr = System.currentTimeMillis();
+                        if(curr - mRecTs > 1000){
+                            if(mOnCricularEncoderEventListener != null){
+                                mOnCricularEncoderEventListener.onFrameRateReceive(mFrameCount);
+                            }
+                            mRecTs = curr;
+                            mFrameCount = 0;
+                        }
                     }
 
                     mVideoEncoder.releaseOutputBuffer(encoderStatus, false);
@@ -435,8 +459,6 @@ public class CircularEncoder {
                     }
                 }
             }
-
-
         }
 
         String toString(byte[] a) {
@@ -572,5 +594,6 @@ public class CircularEncoder {
         void onConfigFrameReceive(byte[] data, int length);
         void onKeyFrameReceive(byte[] data, int length);
         void onOtherFrameReceive(byte[] data, int length);
+        void onFrameRateReceive(int frameRate);
     }
 }

@@ -8,6 +8,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 
 import com.vonchenchen.mediacodecdemo.camera.CameraManager;
 import com.vonchenchen.mediacodecdemo.camera.interfaces.OnCameraPreviewListener;
@@ -31,16 +32,17 @@ public class MainActivity extends AppCompatActivity {
     private VideoDecodeProcessor mH264VideoDecodeProcessor;
     private VideoDecodeProcessor mVp8VideoDecodeProcessor;
 
-    private CameraManager.CameraSize mCurrentSize = CameraManager.CameraSize.SIZE_480P;
+    private CameraManager.CameraSize mCurrentSize = CameraManager.CameraSize.SIZE_720P;
 
-    private int mCaptureWidth = 640;
-    private int mCaptureHeight = 480;
+    private int mCaptureWidth;
+    private int mCaptureHeight;
     private int mFps = 15;
     private int mCameraIndex = 0;
 
     private boolean mIsStartPlay = false;
     private SurfaceView mVp8PlaySurfaceView;
     private Button mPlayVp8Btn;
+    private TextView mEncodeFrameRateText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,11 +55,24 @@ public class MainActivity extends AppCompatActivity {
         mPlayBtn = findViewById(R.id.btn_play);
         mVp8PlaySurfaceView = findViewById(R.id.sv_playvp8);
         mPlayVp8Btn = findViewById(R.id.btn_playvp8);
+        mEncodeFrameRateText = findViewById(R.id.tv_encode_framerate);
 
         mCameraIndex = 0;
 
         //编码设置
         mVideoEncodeProcessor = new VideoEncodeProcessor("/sdcard/test.h264");
+        mVideoEncodeProcessor.setOnVideoEncodeEventListener(new VideoEncodeProcessor.OnVideoEncodeEventListener() {
+            @Override
+            public void onFrameRate(final int frameRate) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mEncodeFrameRateText.setText("framerate="+frameRate);
+                    }
+                });
+
+            }
+        });
 
         //设置解码文件avc
         String inputPathAvc = "/sdcard/test.h264";

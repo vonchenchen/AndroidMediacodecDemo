@@ -38,6 +38,18 @@
             android:text="play"/>
     </LinearLayout>
 
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_below="@id/ll_cam_ctl">
+        <TextView
+            android:id="@+id/tv_encode_framerate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="framerate="/>
+    </LinearLayout>
+
     <SurfaceView
         android:id="@+id/sv_playvp8"
         android:layout_width="320dp"

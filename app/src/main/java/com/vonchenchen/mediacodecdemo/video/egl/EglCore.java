@@ -192,7 +192,6 @@ public final class EglCore {
             boolean destroyContext = EGL14.eglDestroyContext(mEGLDisplay, mEGLContext);
             boolean releaseThread = EGL14.eglReleaseThread();
             EGL14.eglTerminate(mEGLDisplay);
-            //Log.e("ECDeviceSDK.RPCVideoCaptureAndroid" , "destroyContext %b , releaseThread %b " , destroyContext , releaseThread);
         }
 
         mEGLDisplay = EGL14.EGL_NO_DISPLAY;
@@ -222,7 +221,7 @@ public final class EglCore {
      */
     public void releaseSurface(EGLSurface eglSurface) {
         boolean destroySurface = EGL14.eglDestroySurface(mEGLDisplay, eglSurface);
-        Logger.e("ECDeviceSDK.RPCVideoCaptureAndroid" , "destroySurface "+ destroySurface);
+        Logger.e("RPCVideoCaptureAndroid" , "destroySurface "+ destroySurface);
     }
 
     /**

@@ -22,7 +22,7 @@ import java.io.IOException;
 
 public class GLThread extends HandlerThread implements OnFrameAvailableListener, SurfaceHolder.Callback{
 
-	static private final String TAG = "ECDevice.GLThread";
+	static private final String TAG = "GLThread";
 	static private final int MSG_FRAME_AVAILABLE = 1;
 	static private final int MSG_FINISH = 2;
 
@@ -204,6 +204,7 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 
 	@Override
 	public void onFrameAvailable(SurfaceTexture surfaceTexture) {
+
 		frameAvailable();
 	}
 
@@ -217,6 +218,9 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 
 		}
 	}
+
+	/** 丢帧计数器 */
+	private int mFrameSkipCnt = 0;
 
 	private void frameAvailableInThread() {
         //Log.d(TAG, "drawFrame");
@@ -241,6 +245,12 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 		mDisplaySurface.swapBuffers();
 
 		mFrameCount ++;
+
+		//丢帧
+//		mFrameSkipCnt++;
+//		if(mFrameSkipCnt % 2 == 0){
+//			return;
+//		}
 
 		/********* draw to HD encoder **********/
 		if(mHDEncoder != null) {
