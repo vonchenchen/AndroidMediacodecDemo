@@ -325,16 +325,23 @@ public class Texture2dProgram {
     }
 
     public void beginDrawToTexture(int textureId) {
+
     	if (mFBOHandle == 0) {
     		int[] ids = new int[1];
     		glGenFramebuffers(1, ids, 0);
-        	if (GlUtil.CHECK_ERROR) GlUtil.checkGlError("glGenFramebuffers");
+        	if (GlUtil.CHECK_ERROR) {
+        	    GlUtil.checkGlError("glGenFramebuffers");
+            }
     		mFBOHandle = ids[0];
     	}
 		glBindFramebuffer(GL_FRAMEBUFFER, mFBOHandle);
-    	if (GlUtil.CHECK_ERROR) GlUtil.checkGlError("glBindFramebuffer");
+    	if (GlUtil.CHECK_ERROR) {
+    	    GlUtil.checkGlError("glBindFramebuffer");
+        }
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureId, 0);
-    	if (GlUtil.CHECK_ERROR) GlUtil.checkGlError("glFramebufferTexture2D");
+    	if (GlUtil.CHECK_ERROR) {
+    	    GlUtil.checkGlError("glFramebufferTexture2D");
+        }
     }
 
     public void beginDrawToDefault() {

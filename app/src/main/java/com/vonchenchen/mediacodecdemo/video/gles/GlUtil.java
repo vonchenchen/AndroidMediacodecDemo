@@ -55,10 +55,12 @@ public class GlUtil {
     public static int createProgram(String vertexSource, String fragmentSource) {
         int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexSource);
         if (vertexShader == 0) {
+            Logger.e(TAG, "load vertexShader err");
             return 0;
         }
         int pixelShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentSource);
         if (pixelShader == 0) {
+            Logger.e(TAG, "load fragmentShader err");
             return 0;
         }
 

@@ -2,6 +2,8 @@ package com.vonchenchen.mediacodecdemo.video;
 
 public class Utils {
 
+    private static final String TAG = "Utils";
+
     public static String byteArrayToHexString(byte[] a) {
         if (a == null) {
             return "null";
@@ -29,5 +31,17 @@ public class Utils {
         ret += ((short)data[offset+2] & 0x00ff) << 16;
         ret += ((short)data[offset+3] & 0x00ff) << 24;
         return ret;
+    }
+
+    public static void printMat(float[] mat, int width, int height){
+
+        for(int i=0; i<height; i++){
+
+            String row = "";
+            for(int j=0; j<width; j++){
+                row += mat[i*width + j] +"  ";
+            }
+            Logger.i(TAG, row);
+        }
     }
 }

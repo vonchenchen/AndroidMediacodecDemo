@@ -52,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
 
     int mDisplayViewWidth;
     int mDisplayViewHeight;
+    private SurfaceView mPlaySurfaceView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,6 +65,7 @@ public class MainActivity extends AppCompatActivity {
         mPlayBtn = findViewById(R.id.btn_play);
         mVp8PlaySurfaceView = findViewById(R.id.sv_playvp8);
         mPlayVp8Btn = findViewById(R.id.btn_playvp8);
+        mPlaySurfaceView = findViewById(R.id.sv_play);
         mEncodeFrameRateText = findViewById(R.id.tv_encode_framerate);
 
         mCameraIndex = 0;
@@ -85,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
 
         //设置解码文件avc
         String inputPathAvc = "/sdcard/test.h264";
-        mH264VideoDecodeProcessor = new VideoDecodeProcessor(mCamSurfaceView, inputPathAvc, MediaFormat.MIMETYPE_VIDEO_AVC);
+        mH264VideoDecodeProcessor = new VideoDecodeProcessor(mPlaySurfaceView, inputPathAvc, MediaFormat.MIMETYPE_VIDEO_AVC);
 
         //设置解码文件vp8
         String inputPathVp8 = "/sdcard/out.vp8";

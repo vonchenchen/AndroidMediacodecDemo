@@ -85,6 +85,14 @@ public class FullFrameRect {
     }
 
     /**
+     * 渲染textureId到framebuffer
+     * @param textureId
+     */
+    public void beginDrawToTexture(int textureId){
+        mProgram.beginDrawToTexture(textureId);
+    }
+
+    /**
      * Draws a viewport-filling rect, texturing it with the specified texture object.
      */
     public void drawFrame(int textureId, float[] texMatrix) {

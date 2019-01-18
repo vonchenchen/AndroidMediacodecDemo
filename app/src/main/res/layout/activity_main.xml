@@ -57,6 +57,13 @@
         android:layout_toRightOf="@id/sv_cam"
         android:layout_marginLeft="50dp"/>
 
+    <SurfaceView
+        android:id="@+id/sv_play"
+        android:layout_width="320dp"
+        android:layout_height="240dp"
+        android:layout_toRightOf="@id/sv_playvp8"
+        android:layout_marginLeft="50dp"/>
+
     <Button
         android:id="@+id/btn_playvp8"
         android:layout_width="80dp"

@@ -147,7 +147,7 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 		Matrix.translateM(mEncodeTextureMatrix, 0, -0.5f, -0.5f, 0);
 
 		initEncoder(listener);
-		initEncoderSurface();
+		//initEncoderSurface();
 	}
 
 	private void initEncoder(CircularEncoder.OnCricularEncoderEventListener listener){
@@ -199,15 +199,21 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 
 	private void initGL() {
 
+		//创建egl环境
 		mEglCore = new EglCore(null, EglCore.FLAG_RECORDABLE);
+		//封装egl与对应的surface
 		mDisplaySurface = new WindowSurface(mEglCore,mSurface , false);
 		mDisplaySurface.makeCurrent();
 
+		//drawer封装opengl program相关
         mInternalTexDrawer = new FullFrameRect(new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_EXT));
 		//mInternalTexDrawer = new FullFrameRect(new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_EXT_BW));
 		//mInternalTexDrawer = new FullFrameRect(new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_EXT_FILT));
+		//绑定一个纹理 根据TEXTURE_EXT 内部绑定一个相机纹理
         mTextureId = mInternalTexDrawer.createTextureObject();
+        //使用纹理创建SurfaceTexture 用来接收相机数据
         mCameraTexture = new SurfaceTexture(mTextureId);
+        //监听接收数据
         mCameraTexture.setOnFrameAvailableListener(this);
 	}
 
@@ -259,7 +265,7 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 		//GLES20.glViewport(0, 0, mCaptureWidth, mCaptureHeight);
 		GLES20.glViewport(0, 0, mDisplayViewWidth, mDisplayViewHeight);
 
-		//将采集到的视频按比例缩放到窗口中
+		//通过修改顶点坐标 将采集到的视频按比例缩放到窗口中
 		ScaleUtils.Param param = ScaleUtils.getScale(mDisplayViewWidth, mDisplayViewHeight, mCaptureWidth, mCaptureHeight);
 		float[] drawMatrix = new float[8];
 		float scaleWidth = ((float) param.width)/mDisplayViewWidth;

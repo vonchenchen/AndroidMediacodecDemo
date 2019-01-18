@@ -28,11 +28,20 @@ public class RenderThread extends BaseThread{
     @Override
     protected void frameAvailableInThread() {
 
-
     }
 
     @Override
     protected void finishThread() {
 
+    }
+
+    @Override
+    public void run() {
+        super.run();
+    }
+
+    @Override
+    public synchronized void start() {
+        super.start();
     }
 }
