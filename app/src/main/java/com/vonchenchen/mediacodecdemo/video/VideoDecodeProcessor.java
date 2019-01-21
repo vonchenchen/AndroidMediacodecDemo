@@ -199,6 +199,7 @@ public class VideoDecodeProcessor {
             public void run() {
 
                 //initGLEnv();
+                //initGLEnv1();
                 initGLEnv2();
 
                 mDecodeThread.start();
@@ -222,6 +223,7 @@ public class VideoDecodeProcessor {
                     mRenderer.draw(mInputSurfaceTextureId);
                     mSourceFrame.unBindFrameBuffer();
 
+                    //FrameBuffer中纹理id
                     int textureId = mSourceFrame.getCacheTextureId();
                     if(mShowSurface == null){
                         mShowSurface = mEgl.createWindowSurface(mRenderSurface);
@@ -281,9 +283,6 @@ public class VideoDecodeProcessor {
         WindowSurface tmpWindowSurface  = new WindowSurface(mEglCore, tmpSurface, false);
         tmpWindowSurface.makeCurrent();
 
-        //初始化渲染窗口
-        mRendererWindowSurface = new WindowSurface(mEglCore, mRenderSurface, false);
-
         //初始化解码窗口 解码后纹理先离屏渲染到framebuffer 再拿到framebuffer的纹理id 将其绘制到渲染窗口
         //drawer封装opengl
         m2DTexDrawer = new FullFrameRect(new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_2D));
@@ -292,18 +291,20 @@ public class VideoDecodeProcessor {
         //创建一个SurfaceTexture用来接收MediaCodec的解码数据
         mDecodeSurfaceTexture = new SurfaceTexture(mTextureId);
         //监听MediaCodec解码数据到 mDecodeSurfaceTexture
-        mDecodeSurfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
-            @Override
-            public void onFrameAvailable(SurfaceTexture surfaceTexture) {
-                Logger.i("lidechen_test", "[onFrameAvailable]");
-            }
-        });
+//        mDecodeSurfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
+//            @Override
+//            public void onFrameAvailable(SurfaceTexture surfaceTexture) {
+//                Logger.i("lidechen_test", "[onFrameAvailable]");
+//            }
+//        });
         //使用SurfaceTexture创建一个解码Surface
         mDecodeSurface = new Surface(mDecodeSurfaceTexture);
-        //mDecodeSurface绑定为当前Egl环境的surface
-        mDecodeWindowSurface = new WindowSurface(mEglCore, mDecodeSurface, true);
-
+//        //mDecodeSurface绑定为当前Egl环境的surface 此surface最终会给到MediaCodec 所以不要在外面用这个surface创建egl的surface
+//        mDecodeWindowSurface = new WindowSurface(mEglCore, mDecodeSurface, true);
         mSimpleDecoder = new SimpleDecoder(mWidth, mHeight, mDecodeSurface, mMediaFormatType);
+
+        //初始化渲染窗口
+        mRendererWindowSurface = new WindowSurface(mEglCore, mRenderSurface, false);
     }
 
     private WrapRenderer mRenderer;
