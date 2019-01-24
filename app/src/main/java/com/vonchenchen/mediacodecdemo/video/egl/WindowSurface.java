@@ -17,6 +17,7 @@
 package com.vonchenchen.mediacodecdemo.video.egl;
 
 import android.graphics.SurfaceTexture;
+import android.opengl.EGLSurface;
 import android.view.Surface;
 
 /**
@@ -90,5 +91,9 @@ public class WindowSurface extends EglSurfaceBase {
         }
         mEglCore = newEglCore;          // switch to new context
         createWindowSurface(mSurface);  // create new surface
+    }
+
+    public EGLSurface getEGLSurface(){
+        return mEGLSurface;
     }
 }

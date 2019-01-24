@@ -45,7 +45,7 @@ public class EglSurfaceBase {
     // EglCore object we're associated with.  It may be associated with multiple surfaces.
     protected EglCore mEglCore;
 
-    private EGLSurface mEGLSurface = EGL14.EGL_NO_SURFACE;
+    protected EGLSurface mEGLSurface = EGL14.EGL_NO_SURFACE;
     private int mWidth = -1;
     private int mHeight = -1;
 

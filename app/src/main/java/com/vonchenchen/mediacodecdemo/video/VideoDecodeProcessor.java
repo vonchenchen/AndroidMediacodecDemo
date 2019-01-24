@@ -25,7 +25,6 @@ import com.vonchenchen.mediacodecdemo.video.gles.FullFrameRect;
 import com.vonchenchen.mediacodecdemo.video.gles.Texture2dProgram;
 
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.concurrent.Semaphore;
 
 /**
@@ -54,7 +53,7 @@ public class VideoDecodeProcessor {
     /** 接收解码数据纹理 glGenTexture生成的纹理转化为SurfaceTexture 将其传递给MediaCodec */
     public SurfaceTexture mDecodeSurfaceTexture;
     /** 封装了顶点和片元的坐标 以及opengl program */
-    private FullFrameRect m2DTexDrawer;//TODO 记得改名
+    private FullFrameRect mEXTTexDrawer;//TODO 记得改名
 
     /** 解码后先渲染到这个自建surface 再通过切换context 绘制到mSurface视窗 */
     private WindowSurface mDecodeWindowSurface;
@@ -69,6 +68,17 @@ public class VideoDecodeProcessor {
 
     private final float[] mDecodeMVPMatrix = new float[16];
 
+    private float[] mBaseScaleVertexBuf = {
+            // 0 bottom left
+            -1.0f, -1.0f,
+            // 1 bottom right
+            1.0f, -1.0f,
+            // 2 top left
+            -1.0f,  1.0f,
+            // 3 top right
+            1.0f,  1.0f,
+    };
+
     int mWidth;
     int mHeight;
     private Thread mDecodeThread;
@@ -76,6 +86,10 @@ public class VideoDecodeProcessor {
     private int mInputSurfaceTextureId;
     private EglHelper mEgl;
     private EGLSurface mShowSurface;
+    private FullFrameRect mEXTexDrawer;
+
+    private int mSurfaceWidth;
+    private int mSurfaceHeight;
 
     public VideoDecodeProcessor(SurfaceView surfaceView, String path, String mediaFormatType){
 
@@ -96,7 +110,8 @@ public class VideoDecodeProcessor {
 
             @Override
             public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {
-
+                mSurfaceWidth = mSurfaceView.getMeasuredWidth();
+                mSurfaceHeight = mSurfaceView.getMeasuredHeight();
             }
 
             @Override
@@ -106,7 +121,7 @@ public class VideoDecodeProcessor {
         });
     }
 
-    public void startPlay(int width, int height){
+    public void startPlay(int width, final int height){
         mPts = 0;
         //创建解码器
         //mCircularDecoder = new CircularDecoder(mSurfaceView, mMediaFormatType);
@@ -139,27 +154,8 @@ public class VideoDecodeProcessor {
                     long end = System.currentTimeMillis();
                     Logger.i(TAG,"lidechen_test spend="+(end-start));
 
-                    //释放信号量 通知frame ok
+                    //解码完毕 释放信号量 通知frame ok
                     mFrameSem.release();
-
-//                    if(ret >= 0) {
-//                        mDecodeWindowSurface.makeCurrent();
-//                        //mDecodeSurfaceTexture.updateTexImage();
-//                        m2DTexDrawer.drawFrame(mTextureId, mDecodeMVPMatrix);
-//                        mDecodeWindowSurface.setPresentationTime(mDecodeSurfaceTexture.getTimestamp());
-//                        mDecodeWindowSurface.swapBuffers();
-//                    }
-
-//                    mRendererWindowSurface.makeCurrent();
-//                    //mDecodeSurfaceTexture.updateTexImage();
-//                    GLES20.glViewport(0, 0, 300, 300);
-//                    m2DTexDrawer.drawFrame(mTextureId, mDecodeMVPMatrix);
-//                    mRendererWindowSurface.setPresentationTime(mDecodeSurfaceTexture.getTimestamp());
-//                    mRendererWindowSurface.swapBuffers();
-//
-//                    mDecodeWindowSurface.makeCurrent();
-
-                    //mCameraTexture.getTransformMatrix(mCameraMVPMatrix);
 
                     try {
                         Thread.sleep(50);
@@ -199,8 +195,8 @@ public class VideoDecodeProcessor {
             public void run() {
 
                 //initGLEnv();
-                //initGLEnv1();
-                initGLEnv2();
+                initGLEnv1();
+                //initGLEnv2();
 
                 mDecodeThread.start();
 
@@ -215,23 +211,21 @@ public class VideoDecodeProcessor {
 
                     mDecodeSurfaceTexture.updateTexImage();
 
-                    //将纹理绘制到framebuffer
-                    mDecodeSurfaceTexture.getTransformMatrix(mRenderer.getTextureMatrix());
-                    //创建或者获取framebuffer 将解码器中自己创建的mInputSurfaceTextureId纹理Id先绘制到framebuffer
-                    mSourceFrame.bindFrameBuffer(mWidth, mHeight);
-                    GLES20.glViewport(0,0, mWidth, mHeight);
-                    mRenderer.draw(mInputSurfaceTextureId);
-                    mSourceFrame.unBindFrameBuffer();
+                    mDecodeSurfaceTexture.getTransformMatrix(mDecodeMVPMatrix);
 
-                    //FrameBuffer中纹理id
                     int textureId = mSourceFrame.getCacheTextureId();
-                    if(mShowSurface == null){
-                        mShowSurface = mEgl.createWindowSurface(mRenderSurface);
-                    }
-                    mEgl.makeCurrent(mShowSurface);
-                    GLES20.glViewport(0,0,mWidth,mHeight);
-                    mRenderer.draw(textureId);
-                    mEgl.swapBuffers(mShowSurface);
+
+                    Logger.i(TAG,"mTextureId="+mTextureId+" textureId="+textureId);
+                    Utils.printMat(mDecodeMVPMatrix, 4, 4);
+
+                    mRendererWindowSurface.makeCurrent();
+                    GLES20.glViewport(0,0, mSurfaceWidth, mSurfaceHeight);
+
+                    float[] vertex = getScaleVertex(mSurfaceWidth, mSurfaceHeight, 1280, 720);
+                    mEXTTexDrawer.rescaleDrawRect(vertex);
+
+                    mEXTTexDrawer.drawFrame(mTextureId, mDecodeMVPMatrix);
+                    mRendererWindowSurface.swapBuffers();
 
                     Logger.i("lidechen_test", "frame ok");
                 }
@@ -251,9 +245,9 @@ public class VideoDecodeProcessor {
         mRendererWindowSurface.makeCurrent();
 
         //drawer封装opengl
-        m2DTexDrawer = new FullFrameRect(new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_2D));
+        mEXTTexDrawer = new FullFrameRect(new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_2D));
         //绑定一个TEXTURE_2D纹理
-        mTextureId = m2DTexDrawer.createTextureObject();
+        mTextureId = mEXTTexDrawer.createTextureObject();
         //创建一个SurfaceTexture用来接收MediaCodec的解码数据
         mDecodeSurfaceTexture = new SurfaceTexture(mTextureId);
         //监听MediaCodec解码数据到 mDecodeSurfaceTexture
@@ -285,25 +279,21 @@ public class VideoDecodeProcessor {
 
         //初始化解码窗口 解码后纹理先离屏渲染到framebuffer 再拿到framebuffer的纹理id 将其绘制到渲染窗口
         //drawer封装opengl
-        m2DTexDrawer = new FullFrameRect(new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_2D));
+        mEXTTexDrawer = new FullFrameRect(new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_EXT));
         //绑定一个TEXTURE_2D纹理
-        mTextureId = m2DTexDrawer.createTextureObject();
+        mTextureId = mEXTTexDrawer.createTextureObject();
         //创建一个SurfaceTexture用来接收MediaCodec的解码数据
         mDecodeSurfaceTexture = new SurfaceTexture(mTextureId);
         //监听MediaCodec解码数据到 mDecodeSurfaceTexture
-//        mDecodeSurfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
-//            @Override
-//            public void onFrameAvailable(SurfaceTexture surfaceTexture) {
-//                Logger.i("lidechen_test", "[onFrameAvailable]");
-//            }
-//        });
         //使用SurfaceTexture创建一个解码Surface
         mDecodeSurface = new Surface(mDecodeSurfaceTexture);
 //        //mDecodeSurface绑定为当前Egl环境的surface 此surface最终会给到MediaCodec 所以不要在外面用这个surface创建egl的surface
 //        mDecodeWindowSurface = new WindowSurface(mEglCore, mDecodeSurface, true);
         mSimpleDecoder = new SimpleDecoder(mWidth, mHeight, mDecodeSurface, mMediaFormatType);
 
-        //初始化渲染窗口
+        mSourceFrame = new FrameBuffer();
+
+//        //初始化渲染窗口
         mRendererWindowSurface = new WindowSurface(mEglCore, mRenderSurface, false);
     }
 
@@ -354,5 +344,36 @@ public class VideoDecodeProcessor {
 
     public interface OnVideoDecodeEventListener{
         void onDecodeFinish();
+    }
+
+    private float[] getScaleVertex(int displayViewWidth, int displayViewHeight, int frameWidth, int frameHeight){
+
+        //通过修改顶点坐标 将采集到的视频按比例缩放到窗口中
+        ScaleUtils.Param param = ScaleUtils.getScale(displayViewWidth, displayViewHeight, frameWidth, frameHeight);
+        float scaleWidth = ((float) param.width)/displayViewWidth;
+        float scaleHeight = ((float) param.height)/displayViewHeight;
+        float[] drawMatrix = new float[8];
+        if(scaleWidth == 1){
+            float halfHeight = scaleHeight;
+            drawMatrix[0] = -1;
+            drawMatrix[1] = -halfHeight;
+            drawMatrix[2] = 1;
+            drawMatrix[3] = -halfHeight;
+            drawMatrix[4] = -1;
+            drawMatrix[5] = halfHeight;
+            drawMatrix[6] = 1;
+            drawMatrix[7] = halfHeight;
+        }else{
+            float halfWidth = scaleWidth;
+            drawMatrix[0] = -halfWidth;
+            drawMatrix[1] = -1;
+            drawMatrix[2] = halfWidth;
+            drawMatrix[3] = -1;
+            drawMatrix[4] = -halfWidth;
+            drawMatrix[5] = 1;
+            drawMatrix[6] = halfWidth;
+            drawMatrix[7] = 1;
+        }
+        return drawMatrix;
     }
 }

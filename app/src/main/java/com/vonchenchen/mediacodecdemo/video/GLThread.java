@@ -259,6 +259,9 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 		//用于接收相机预览纹理id的SurfaceTexture
 		//updateTexImage()方法在OpenGLES环境调用 将数据绑定给OpenGLES对应的纹理对象GL_OES_EGL_image_external 对应shader中samplerExternalOES
 		//updateTexImage 完毕后接收下一帧
+		//由于在OpenGL ES中，上传纹理（glTexImage2D(), glSubTexImage2D()）是一个极为耗时的过程，在1080×1920的屏幕尺寸下传一张全屏的texture需要20～60ms。这样的话SurfaceFlinger就不可能在60fps下运行。
+		//因此， Android采用了image native buffer,将graphic buffer直接作为纹理（direct texture）进行操作
+
         mCameraTexture.updateTexImage();
         mCameraTexture.getTransformMatrix(mCameraMVPMatrix);
         // Fill the SurfaceView with it.
