@@ -56,4 +56,43 @@ public class ScaleUtils {
         public int width;
         public int height;
     }
+
+    /**
+     * 根据屏幕宽高与帧宽高重新计算VertexMat 将图片等比例画入控件框中
+     * @param displayViewWidth
+     * @param displayViewHeight
+     * @param frameWidth
+     * @param frameHeight
+     * @return
+     */
+    public static float[] getScaleVertexMat(int displayViewWidth, int displayViewHeight, int frameWidth, int frameHeight){
+
+        //通过修改顶点坐标 将采集到的视频按比例缩放到窗口中
+        ScaleUtils.Param param = ScaleUtils.getScale(displayViewWidth, displayViewHeight, frameWidth, frameHeight);
+        float scaleWidth = ((float) param.width)/displayViewWidth;
+        float scaleHeight = ((float) param.height)/displayViewHeight;
+        float[] drawMatrix = new float[8];
+        if(scaleWidth == 1){
+            float halfHeight = scaleHeight;
+            drawMatrix[0] = -1;
+            drawMatrix[1] = -halfHeight;
+            drawMatrix[2] = 1;
+            drawMatrix[3] = -halfHeight;
+            drawMatrix[4] = -1;
+            drawMatrix[5] = halfHeight;
+            drawMatrix[6] = 1;
+            drawMatrix[7] = halfHeight;
+        }else{
+            float halfWidth = scaleWidth;
+            drawMatrix[0] = -halfWidth;
+            drawMatrix[1] = -1;
+            drawMatrix[2] = halfWidth;
+            drawMatrix[3] = -1;
+            drawMatrix[4] = -halfWidth;
+            drawMatrix[5] = 1;
+            drawMatrix[6] = halfWidth;
+            drawMatrix[7] = 1;
+        }
+        return drawMatrix;
+    }
 }

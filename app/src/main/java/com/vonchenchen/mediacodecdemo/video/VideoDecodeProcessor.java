@@ -1,9 +1,7 @@
 package com.vonchenchen.mediacodecdemo.video;
 
 import android.graphics.SurfaceTexture;
-import android.media.MediaCodec;
 import android.media.MediaFormat;
-import android.opengl.EGLSurface;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.view.Surface;
@@ -15,17 +13,12 @@ import com.vonchenchen.mediacodecdemo.io.IStreamDataReader;
 import com.vonchenchen.mediacodecdemo.io.IVFDataReader;
 import com.vonchenchen.mediacodecdemo.video.egl.EglCore;
 import com.vonchenchen.mediacodecdemo.video.egl.WindowSurface;
-import com.vonchenchen.mediacodecdemo.video.gl.EGLConfigAttrs;
-import com.vonchenchen.mediacodecdemo.video.gl.EGLContextAttrs;
-import com.vonchenchen.mediacodecdemo.video.gl.EglHelper;
-import com.vonchenchen.mediacodecdemo.video.gl.FrameBuffer;
-import com.vonchenchen.mediacodecdemo.video.gl.GpuUtils;
-import com.vonchenchen.mediacodecdemo.video.gl.WrapRenderer;
 import com.vonchenchen.mediacodecdemo.video.gles.FullFrameRect;
 import com.vonchenchen.mediacodecdemo.video.gles.Texture2dProgram;
 
 import java.io.FileNotFoundException;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by vonchenchen on 2018/5/17.
@@ -38,7 +31,7 @@ public class VideoDecodeProcessor {
     private volatile boolean mStopPlay;
 
     private SurfaceView mSurfaceView;
-    //private CircularDecoder mCircularDecoder;
+    //private DirectDecoder mCircularDecoder;
     private SimpleDecoder mSimpleDecoder;
 
     private IStreamDataReader mStreamDataReader;
@@ -55,8 +48,6 @@ public class VideoDecodeProcessor {
     /** 封装了顶点和片元的坐标 以及opengl program */
     private FullFrameRect mEXTTexDrawer;//TODO 记得改名
 
-    /** 解码后先渲染到这个自建surface 再通过切换context 绘制到mSurface视窗 */
-    private WindowSurface mDecodeWindowSurface;
     /** 真实渲染surface */
     private WindowSurface mRendererWindowSurface;
 
@@ -68,28 +59,14 @@ public class VideoDecodeProcessor {
 
     private final float[] mDecodeMVPMatrix = new float[16];
 
-    private float[] mBaseScaleVertexBuf = {
-            // 0 bottom left
-            -1.0f, -1.0f,
-            // 1 bottom right
-            1.0f, -1.0f,
-            // 2 top left
-            -1.0f,  1.0f,
-            // 3 top right
-            1.0f,  1.0f,
-    };
-
     int mWidth;
     int mHeight;
     private Thread mDecodeThread;
-    private FrameBuffer mSourceFrame;
-    private int mInputSurfaceTextureId;
-    private EglHelper mEgl;
-    private EGLSurface mShowSurface;
-    private FullFrameRect mEXTexDrawer;
 
     private int mSurfaceWidth;
     private int mSurfaceHeight;
+
+    private boolean mIsLoop = false;
 
     public VideoDecodeProcessor(SurfaceView surfaceView, String path, String mediaFormatType){
 
@@ -101,22 +78,25 @@ public class VideoDecodeProcessor {
 
         Utils.printMat(mDecodeMVPMatrix, 4, 4);
 
-        surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
+        mSurfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
             @Override
             public void surfaceCreated(SurfaceHolder surfaceHolder) {
 
                 mRenderSurface = surfaceHolder.getSurface();
+                Logger.i(TAG, "surfaceCreated mRenderSurface="+mRenderSurface);
             }
 
             @Override
             public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {
                 mSurfaceWidth = mSurfaceView.getMeasuredWidth();
                 mSurfaceHeight = mSurfaceView.getMeasuredHeight();
+                Logger.i(TAG, "surfaceChanged mRenderSurface="+mRenderSurface);
             }
 
             @Override
             public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
 
+                Logger.i(TAG, "surfaceDestroyed mRenderSurface="+mRenderSurface);
             }
         });
     }
@@ -124,12 +104,11 @@ public class VideoDecodeProcessor {
     public void startPlay(int width, final int height){
         mPts = 0;
         //创建解码器
-        //mCircularDecoder = new CircularDecoder(mSurfaceView, mMediaFormatType);
-        //mSimpleDecoder = new SimpleDecoder(width, height, mDecodeSurface, mMediaFormatType);
-        //mSimpleDecoder = new SimpleDecoder(width, height, mRenderSurface, mMediaFormatType);
 
         mWidth = width;
         mHeight = height;
+
+        //mRenderSurface = mSurfaceView.getHolder().getSurface();
 
         try {
             if(mMediaFormatType.equals(MediaFormat.MIMETYPE_VIDEO_AVC)) {
@@ -140,6 +119,7 @@ public class VideoDecodeProcessor {
                 mStreamDataReader = new IVFDataReader(mInPath, width * height * 3);
             }
 
+            //解码线程回调
             mStreamDataReader.setOnDataParsedListener(new IStreamDataReader.OnDataParsedListener() {
                 @Override
                 public void onParsed(byte[] data, int index, int length) {
@@ -179,6 +159,7 @@ public class VideoDecodeProcessor {
                 while (mStopPlay) {
                     ret = mStreamDataReader.readNextFrame();
                     if(ret <=0){
+
                         break;
                     }
                 }
@@ -186,104 +167,121 @@ public class VideoDecodeProcessor {
                 if(mOnVideoDecodeEventListener != null){
                     mOnVideoDecodeEventListener.onDecodeFinish();
                 }
+                mIsLoop = false;
             }
         });
+
+        mIsLoop = true;
 
         //render
         new Thread(new Runnable() {
             @Override
             public void run() {
 
-                //initGLEnv();
                 initGLEnv1();
-                //initGLEnv2();
 
                 mDecodeThread.start();
 
-                while (true){
+                decodeLoop();
 
-                    try {
-                        mFrameSem.acquire();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                        return;
-                    }
-
-                    mDecodeSurfaceTexture.updateTexImage();
-
-                    mDecodeSurfaceTexture.getTransformMatrix(mDecodeMVPMatrix);
-
-                    int textureId = mSourceFrame.getCacheTextureId();
-
-                    Logger.i(TAG,"mTextureId="+mTextureId+" textureId="+textureId);
-                    Utils.printMat(mDecodeMVPMatrix, 4, 4);
-
-                    mRendererWindowSurface.makeCurrent();
-                    GLES20.glViewport(0,0, mSurfaceWidth, mSurfaceHeight);
-
-                    float[] vertex = getScaleVertex(mSurfaceWidth, mSurfaceHeight, 1280, 720);
-                    mEXTTexDrawer.rescaleDrawRect(vertex);
-
-                    mEXTTexDrawer.drawFrame(mTextureId, mDecodeMVPMatrix);
-                    mRendererWindowSurface.swapBuffers();
-
-                    Logger.i("lidechen_test", "frame ok");
-                }
+                release();
             }
         }).start();
     }
 
-    private void initGLEnv(){
-
-        //mSimpleDecoder = new SimpleDecoder(width, height, mRenderSurface, mMediaFormatType);
-
-        //为渲染窗口创建egl环境
-        mEglCore = new EglCore(null, EglCore.FLAG_RECORDABLE);
-        //封装egl与对应的渲染surfaces
-        mRendererWindowSurface = new WindowSurface(mEglCore, mRenderSurface, false);
-        //使能egl
-        mRendererWindowSurface.makeCurrent();
-
-        //drawer封装opengl
-        mEXTTexDrawer = new FullFrameRect(new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_2D));
-        //绑定一个TEXTURE_2D纹理
-        mTextureId = mEXTTexDrawer.createTextureObject();
-        //创建一个SurfaceTexture用来接收MediaCodec的解码数据
-        mDecodeSurfaceTexture = new SurfaceTexture(mTextureId);
-        //监听MediaCodec解码数据到 mDecodeSurfaceTexture
-        mDecodeSurfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
-            @Override
-            public void onFrameAvailable(SurfaceTexture surfaceTexture) {
-
-                Logger.i("lidechen_test", "[onFrameAvailable]");
+    private void decodeLoop(){
+        while (mIsLoop) {
+            try {
+                mFrameSem.tryAcquire(1000, TimeUnit.MICROSECONDS);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                return;
             }
-        });
-        //使用SurfaceTexture创建一个解码Surface
-        mDecodeSurface = new Surface(mDecodeSurfaceTexture);
-        //mDecodeSurface绑定为当前Egl环境的surface
-        mDecodeWindowSurface = new WindowSurface(mEglCore, mDecodeSurface, true);
+            if(!mIsLoop){
+                break;
+            }
 
-        mDecodeWindowSurface.makeCurrent();
+            mDecodeSurfaceTexture.updateTexImage();
 
-        //mSimpleDecoder = new SimpleDecoder(width, height, mDecodeSurface, mMediaFormatType);
+            mDecodeSurfaceTexture.getTransformMatrix(mDecodeMVPMatrix);
+
+            Utils.printMat(mDecodeMVPMatrix, 4, 4);
+
+            mRendererWindowSurface.makeCurrent();
+            GLES20.glViewport(0, 0, mSurfaceWidth, mSurfaceHeight);
+
+            float[] vertex = ScaleUtils.getScaleVertexMat(mSurfaceWidth, mSurfaceHeight, 1280, 720);
+            mEXTTexDrawer.rescaleDrawRect(vertex);
+
+//            try {
+                mEXTTexDrawer.drawFrame(mTextureId, mDecodeMVPMatrix);
+//            } catch (Exception e) {
+//                //e.printStackTrace();
+//                Logger.e("lidechen_test", "drawFrame Exception="+e.toString());
+//                continue;
+//            }
+            mRendererWindowSurface.swapBuffers();
+
+            Logger.i("lidechen_test", "frame ok");
+        }
     }
 
     private void initGLEnv1(){
 
+        //mRenderSurface = mSurfaceView.getHolder().getSurface();
+        //if(mRenderSurface != null && mRenderSurface.isValid()) {
+            initDecoder();
+        //}
+
+//        mSurfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
+//            @Override
+//            public void surfaceCreated(SurfaceHolder surfaceHolder) {
+//
+//                mRenderSurface = surfaceHolder.getSurface();
+//                Logger.i(TAG, "surfaceCreated mRenderSurface="+mRenderSurface);
+//
+//                initDecoder();
+//            }
+//
+//            @Override
+//            public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {
+//                mSurfaceWidth = mSurfaceView.getMeasuredWidth();
+//                mSurfaceHeight = mSurfaceView.getMeasuredHeight();
+//                Logger.i(TAG, "surfaceChanged mRenderSurface="+mRenderSurface);
+//            }
+//
+//            @Override
+//            public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
+//
+//                Logger.i(TAG, "surfaceDestroyed mRenderSurface="+mRenderSurface);
+//
+//                releaseDecoder();
+//            }
+//        });
+    }
+
+    private void initDecoder(){
+
+        releaseDecoder();
+
         //建立一个临时SurfaceTexture 用来创建egl环境
         mEglCore = new EglCore(null, EglCore.FLAG_RECORDABLE);
-        SurfaceTexture tmpSurfaceTexture = new SurfaceTexture(0);
-        Surface tmpSurface = new Surface(tmpSurfaceTexture);
-        WindowSurface tmpWindowSurface  = new WindowSurface(mEglCore, tmpSurface, false);
-        tmpWindowSurface.makeCurrent();
+        //初始化渲染窗口
+        mRendererWindowSurface = new WindowSurface(mEglCore, mRenderSurface, false);
+        mRendererWindowSurface.makeCurrent();
 
-        //初始化解码窗口 解码后纹理先离屏渲染到framebuffer 再拿到framebuffer的纹理id 将其绘制到渲染窗口
         //drawer封装opengl
         mEXTTexDrawer = new FullFrameRect(new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_EXT));
         //绑定一个TEXTURE_2D纹理
         mTextureId = mEXTTexDrawer.createTextureObject();
         //创建一个SurfaceTexture用来接收MediaCodec的解码数据
         mDecodeSurfaceTexture = new SurfaceTexture(mTextureId);
+        mDecodeSurfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
+            @Override
+            public void onFrameAvailable(SurfaceTexture surfaceTexture) {
+                Logger.i("lidechen_test", "onFrameAvailable");
+            }
+        });
         //监听MediaCodec解码数据到 mDecodeSurfaceTexture
         //使用SurfaceTexture创建一个解码Surface
         mDecodeSurface = new Surface(mDecodeSurfaceTexture);
@@ -291,49 +289,38 @@ public class VideoDecodeProcessor {
 //        mDecodeWindowSurface = new WindowSurface(mEglCore, mDecodeSurface, true);
         mSimpleDecoder = new SimpleDecoder(mWidth, mHeight, mDecodeSurface, mMediaFormatType);
 
-        mSourceFrame = new FrameBuffer();
-
-//        //初始化渲染窗口
-        mRendererWindowSurface = new WindowSurface(mEglCore, mRenderSurface, false);
     }
 
-    private WrapRenderer mRenderer;
-
-    MediaCodec mediaCodec;
-    private void initGLEnv2(){
-
-        mEgl = new EglHelper();
-        //此处使用一个空的SurfaceTexture建立egl 其中texName可以传任何数字 makecurrent
-        boolean ret= mEgl.createGLESWithSurface(new EGLConfigAttrs(),new EGLContextAttrs(),new SurfaceTexture(0));
-        if(!ret){
-            //todo 错误处理
-            return;
-        }
-        //创建一个gl纹理并包装 这个纹理将被传入MediaCodec
-        mInputSurfaceTextureId = GpuUtils.createTextureID(true);
-        mDecodeSurfaceTexture = new SurfaceTexture(mInputSurfaceTextureId);
-
-        mSimpleDecoder = new SimpleDecoder(mWidth, mHeight, new Surface(mDecodeSurfaceTexture), mMediaFormatType);
-
-        //建立一个render 用于给真正的显示surface渲染
-        if(mRenderer==null){
-            mRenderer=new WrapRenderer(null);
-        }
-        mSourceFrame = new FrameBuffer();
-        mRenderer.create();
-        mRenderer.sizeChanged(mWidth, mHeight);
-        mRenderer.setFlag(WrapRenderer.TYPE_MOVE);
-
-        Logger.i("lidechen_test", "initGLEnv2 ok");
-    }
-
-    public void stopPlay(){
+    public void release(){
         mStopPlay = false;
-        //关闭解码器
-        //mCircularDecoder.close();
-        mSimpleDecoder.close();
+
+        releaseDecoder();
 
         mStreamDataReader.close();
+    }
+
+    private void releaseDecoder(){
+
+        //关闭解码器
+        if(mSimpleDecoder != null) {
+            mSimpleDecoder.close();
+        }
+        if(mDecodeSurface != null) {
+            mDecodeSurface.release();
+        }
+        if(mDecodeSurfaceTexture != null) {
+            mDecodeSurfaceTexture.release();
+        }
+        if(mEXTTexDrawer != null) {
+            mEXTTexDrawer.release(true);
+        }
+        if(mEglCore != null) {
+            mEglCore.release();
+        }
+
+        if(mRendererWindowSurface != null) {
+            mRendererWindowSurface.release();
+        }
     }
 
     public void setOnVideoDecodeEventListener(OnVideoDecodeEventListener listener){
@@ -344,36 +331,5 @@ public class VideoDecodeProcessor {
 
     public interface OnVideoDecodeEventListener{
         void onDecodeFinish();
-    }
-
-    private float[] getScaleVertex(int displayViewWidth, int displayViewHeight, int frameWidth, int frameHeight){
-
-        //通过修改顶点坐标 将采集到的视频按比例缩放到窗口中
-        ScaleUtils.Param param = ScaleUtils.getScale(displayViewWidth, displayViewHeight, frameWidth, frameHeight);
-        float scaleWidth = ((float) param.width)/displayViewWidth;
-        float scaleHeight = ((float) param.height)/displayViewHeight;
-        float[] drawMatrix = new float[8];
-        if(scaleWidth == 1){
-            float halfHeight = scaleHeight;
-            drawMatrix[0] = -1;
-            drawMatrix[1] = -halfHeight;
-            drawMatrix[2] = 1;
-            drawMatrix[3] = -halfHeight;
-            drawMatrix[4] = -1;
-            drawMatrix[5] = halfHeight;
-            drawMatrix[6] = 1;
-            drawMatrix[7] = halfHeight;
-        }else{
-            float halfWidth = scaleWidth;
-            drawMatrix[0] = -halfWidth;
-            drawMatrix[1] = -1;
-            drawMatrix[2] = halfWidth;
-            drawMatrix[3] = -1;
-            drawMatrix[4] = -halfWidth;
-            drawMatrix[5] = 1;
-            drawMatrix[6] = halfWidth;
-            drawMatrix[7] = 1;
-        }
-        return drawMatrix;
     }
 }

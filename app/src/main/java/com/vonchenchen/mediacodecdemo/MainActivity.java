@@ -1,6 +1,6 @@
 package com.vonchenchen.mediacodecdemo;
 
-import android.graphics.Bitmap;
+import android.content.Intent;
 import android.graphics.SurfaceTexture;
 import android.media.MediaFormat;
 import android.support.v7.app.AppCompatActivity;
@@ -17,11 +17,6 @@ import com.vonchenchen.mediacodecdemo.camera.interfaces.OnCameraPreviewListener;
 import com.vonchenchen.mediacodecdemo.video.Logger;
 import com.vonchenchen.mediacodecdemo.video.VideoDecodeProcessor;
 import com.vonchenchen.mediacodecdemo.video.VideoEncodeProcessor;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -53,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
     int mDisplayViewWidth;
     int mDisplayViewHeight;
     private SurfaceView mPlaySurfaceView;
+    private Button mTestBtn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
         mPlayVp8Btn = findViewById(R.id.btn_playvp8);
         mPlaySurfaceView = findViewById(R.id.sv_play);
         mEncodeFrameRateText = findViewById(R.id.tv_encode_framerate);
+        mTestBtn = findViewById(R.id.btn_test);
 
         mCameraIndex = 0;
 
@@ -87,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
 
         //设置解码文件avc
         String inputPathAvc = "/sdcard/test.h264";
-        mH264VideoDecodeProcessor = new VideoDecodeProcessor(mPlaySurfaceView, inputPathAvc, MediaFormat.MIMETYPE_VIDEO_AVC);
+        mH264VideoDecodeProcessor = new VideoDecodeProcessor(mCamSurfaceView, inputPathAvc, MediaFormat.MIMETYPE_VIDEO_AVC);
 
         //设置解码文件vp8
         String inputPathVp8 = "/sdcard/out.vp8";
@@ -100,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        mH264VideoDecodeProcessor.stopPlay();
+                        mH264VideoDecodeProcessor.release();
                         mPlayBtn.setText("PLAY");
                     }
                 });
@@ -140,9 +137,13 @@ public class MainActivity extends AppCompatActivity {
                     mDisplayViewWidth = mCamSurfaceView.getWidth();
                     mDisplayViewHeight = mCamSurfaceView.getHeight();
 
+                    //获取相机渲染surface
                     SurfaceHolder surfaceholder = mCamSurfaceView.getHolder();
-                    mVideoEncodeProcessor.startCapture(MainActivity.this, surfaceholder, mCaptureWidth, mCaptureHeight, mDisplayViewWidth, mDisplayViewHeight, mFps);
+                    //开始编码
+                    mVideoEncodeProcessor.startEncode(surfaceholder, mCaptureWidth, mCaptureHeight, mDisplayViewWidth, mDisplayViewHeight, mFps);
+                    //编码线程创建一个纹理id 包装为SurfaceTexture 用作相机渲染
                     SurfaceTexture surfaceTexture = mVideoEncodeProcessor.getCameraTexture();
+                    //相机开启 渲染到上述surfaceTexture
                     CameraManager.getInstance().startCapture(surfaceTexture);
 
                     mEncBtn.setText("enc stop");
@@ -159,7 +160,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 if(mIsStartPlay){
-                    mH264VideoDecodeProcessor.stopPlay();
+                    mH264VideoDecodeProcessor.release();
                     mPlayBtn.setText("PLAY");
                 }else {
 
@@ -180,7 +181,7 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        mVp8VideoDecodeProcessor.stopPlay();
+                        mVp8VideoDecodeProcessor.release();
                         mPlayVp8Btn.setText("play vp8");
                     }
                 });
@@ -211,6 +212,13 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
 
 
+            }
+        });
+
+        mTestBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(MainActivity.this, DummyActivity.class));
             }
         });
 

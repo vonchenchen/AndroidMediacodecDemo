@@ -10,8 +10,11 @@ import android.view.SurfaceView;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+/**
+ * 直接将视频流通过MediaCodec解码到surface上
+ */
 @TargetApi(Build.VERSION_CODES.KITKAT)
-public class CircularDecoder implements SurfaceHolder.Callback{
+public class DirectDecoder implements SurfaceHolder.Callback{
 
     private static final String TAG = "CircularDecoderToSurface";
 
@@ -40,14 +43,14 @@ public class CircularDecoder implements SurfaceHolder.Callback{
      * @param width 解码器分辨率
      * @param height 解码器分辨率
      */
-    CircularDecoder(SurfaceView surfaceView, int width, int height, String mediaFormatType) {
+    DirectDecoder(SurfaceView surfaceView, int width, int height, String mediaFormatType) {
         mMainSurfaceView = surfaceView;
         mWidth = width;
         mHeight = height;
         init();
     }
 
-    CircularDecoder(SurfaceView surfaceView, String mediaFormatType) {
+    DirectDecoder(SurfaceView surfaceView, String mediaFormatType) {
         mMainSurfaceView = surfaceView;
         mWidth = -1;
         mHeight = -1;

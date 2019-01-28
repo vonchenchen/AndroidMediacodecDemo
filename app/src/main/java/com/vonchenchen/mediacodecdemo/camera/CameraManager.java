@@ -99,7 +99,7 @@ public class CameraManager {
         parameters.setPictureSize(pictureSize.width, pictureSize.height);
         //parameters.setRotation(90);
         //parameters.setPreviewFrameRate(fps);
-        parameters.setPreviewFpsRange(fps-3, fps+3);
+        //parameters.setPreviewFpsRange(fps-3, fps+3);
         parameters.setPreviewFormat(PIXEL_FORMAT);
 
         PixelFormat.getPixelFormatInfo(PIXEL_FORMAT, mPixelFormat);
@@ -131,7 +131,7 @@ public class CameraManager {
     public void startCapture(){
         if(mCamera != null) {
             try {
-                Logger.i(TAG, "[startCapture] enter");
+                Logger.i(TAG, "[startEncode] enter");
 
                 setCameraParameters(mCamera, mSizeIndex, mFps);
 
@@ -141,7 +141,7 @@ public class CameraManager {
 
                 mIsStart = true;
             } catch (IOException e) {
-                Logger.e(TAG, "[startCapture] Exception"+e.toString());
+                Logger.e(TAG, "[startEncode] Exception"+e.toString());
             }
         }
     }
@@ -149,7 +149,7 @@ public class CameraManager {
     public void startCapture(SurfaceTexture surfaceTexture, int degrees){
         if(mCamera != null) {
             try {
-                Logger.i(TAG, "[startCapture] enter");
+                Logger.i(TAG, "[startEncode] enter");
                 setCameraParameters(mCamera, mSizeIndex, mFps);
 
                 mCamera.setPreviewTexture(surfaceTexture);
@@ -159,7 +159,7 @@ public class CameraManager {
 
                 mIsStart = true;
             } catch (IOException e) {
-                Logger.e(TAG, "[startCapture] Exception"+e.toString());
+                Logger.e(TAG, "[startEncode] Exception"+e.toString());
             }
         }
     }
@@ -171,7 +171,7 @@ public class CameraManager {
     public void startCapture(SurfaceHolder holder){
         if(mCamera != null) {
             try {
-                Logger.i(TAG, "[startCapture] enter");
+                Logger.i(TAG, "[startEncode] enter");
                 setCameraParameters(mCamera, mSizeIndex, mFps);
 
                 mCamera.setPreviewDisplay(holder);
@@ -179,7 +179,7 @@ public class CameraManager {
 
                 mIsStart = true;
             } catch (IOException e) {
-                Logger.e(TAG, "[startCapture] Exception"+e.toString());
+                Logger.e(TAG, "[startEncode] Exception"+e.toString());
             }
         }
     }

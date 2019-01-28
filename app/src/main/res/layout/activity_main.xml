@@ -84,4 +84,10 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/iv_test"
         android:text="diplay rgb"/>
+    <Button
+        android:id="@+id/btn_test"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/btn_diplay_rgb"
+        android:text="test"/>
 </RelativeLayout>

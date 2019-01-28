@@ -3,8 +3,6 @@ package com.vonchenchen.mediacodecdemo.video;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.view.Surface;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -108,9 +106,9 @@ public class SimpleDecoder {
         return outputBufferIndex;
     }
 
-    private CircularDecoder.OnDecoderEnventLisetener mOnDecoderEnventLisetener = null;
+    private DirectDecoder.OnDecoderEnventLisetener mOnDecoderEnventLisetener = null;
 
-    public void setOnDecoderEnventLisetener(CircularDecoder.OnDecoderEnventLisetener lisetener){
+    public void setOnDecoderEnventLisetener(DirectDecoder.OnDecoderEnventLisetener lisetener){
         mOnDecoderEnventLisetener = lisetener;
     }
 

@@ -14,7 +14,7 @@ import java.io.FileNotFoundException;
 
 public class VideoEncodeProcessor {
 
-    private GLThread mGLThread;
+    private EncodeTask mEncodeTask;
     private MediaDataWriter mMediaDataWriter;
     private String mPath;
 
@@ -26,7 +26,6 @@ public class VideoEncodeProcessor {
 
     /**
      * 开始采集并渲染和编码
-     * @param context
      * @param surfaceHolder
      * @param width    图像宽度
      * @param height   图像高度
@@ -34,24 +33,7 @@ public class VideoEncodeProcessor {
      * @param displayViewHeight   图像view高度
      * @param frameRate
      */
-    public void startCapture(Context context, SurfaceHolder surfaceHolder, int width, int height, int displayViewWidth, int displayViewHeight, int frameRate){
-
-        surfaceHolder.addCallback(new SurfaceHolder.Callback() {
-            @Override
-            public void surfaceCreated(SurfaceHolder surfaceHolder) {
-
-            }
-
-            @Override
-            public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {
-
-            }
-
-            @Override
-            public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
-
-            }
-        });
+    public void startEncode(SurfaceHolder surfaceHolder, int width, int height, int displayViewWidth, int displayViewHeight, int frameRate){
 
         try {
             mMediaDataWriter = new MediaDataWriter(mPath);
@@ -59,12 +41,12 @@ public class VideoEncodeProcessor {
             e.printStackTrace();
         }
 
-        initGLThread(context, surfaceHolder, width, height, displayViewWidth, displayViewHeight,frameRate);
+        initGLThread(surfaceHolder, width, height, displayViewWidth, displayViewHeight,frameRate);
     }
 
-    private void initGLThread(Context context, SurfaceHolder surfaceHolder, int width, int height, int displayViewWidth, int displayViewHeight, int frameRate){
+    private void initGLThread(SurfaceHolder surfaceHolder, int width, int height, int displayViewWidth, int displayViewHeight, int frameRate){
         if(surfaceHolder.getSurface().isValid()){
-            mGLThread = new GLThread(context, surfaceHolder, width, height, displayViewWidth, displayViewHeight,frameRate, new CircularEncoder.OnCricularEncoderEventListener() {
+            mEncodeTask = new EncodeTask(surfaceHolder, width, height, displayViewWidth, displayViewHeight,frameRate, new CircularEncoder.OnCricularEncoderEventListener() {
                 @Override
                 public void onConfigFrameReceive(byte[] data, int length) {
                     mMediaDataWriter.write(data, length);
@@ -88,18 +70,18 @@ public class VideoEncodeProcessor {
                     }
                 }
             });
-            mGLThread.start();
+            mEncodeTask.start();
         }
     }
 
 
     public SurfaceTexture getCameraTexture(){
-        return mGLThread.getCameraTexture();
+        return mEncodeTask.getCameraTexture();
     }
 
     public void stopCapture(){
-        if(mGLThread != null) {
-            mGLThread.release();
+        if(mEncodeTask != null) {
+            mEncodeTask.release();
         }
         if(mMediaDataWriter != null) {
             mMediaDataWriter.close();

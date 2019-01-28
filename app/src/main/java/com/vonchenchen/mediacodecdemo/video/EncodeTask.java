@@ -1,7 +1,5 @@
 package com.vonchenchen.mediacodecdemo.video;
 
-import android.content.Context;
-import android.content.res.Configuration;
 import android.graphics.SurfaceTexture;
 import android.graphics.SurfaceTexture.OnFrameAvailableListener;
 import android.media.MediaFormat;
@@ -21,9 +19,9 @@ import com.vonchenchen.mediacodecdemo.video.gles.Texture2dProgram;
 
 import java.io.IOException;
 
-public class GLThread extends HandlerThread implements OnFrameAvailableListener, SurfaceHolder.Callback{
+public class EncodeTask extends HandlerThread implements OnFrameAvailableListener, SurfaceHolder.Callback{
 
-	static private final String TAG = "GLThread";
+	static private final String TAG = "EncodeTask";
 	static private final int MSG_FRAME_AVAILABLE = 1;
 	static private final int MSG_FINISH = 2;
 
@@ -44,8 +42,8 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
     /** 相机矩阵 由当前相机纹理生成的SurfaceTexture获取 */
     private final float[] mCameraMVPMatrix = new float[16];
     /** 编码视频矩阵 mCameraMVPMatrix X mEncodeTextureMatrix */
-    private final float[] mTmp2Matrix = new float[16];
-	private final float[] mTmp3Matrix = new float[16];
+    private final float[] mEncodeHDMatrix = new float[16];
+	private final float[] mEncodeMatrix = new float[16];
 	/** 处理当前编码图像的 平移 旋转 缩放 */
     private final float[] mEncodeTextureMatrix = new float[16];
 
@@ -107,7 +105,7 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 	public class MainHandler extends Handler {
 
 		public MainHandler() {
-			super(GLThread.this.getLooper());
+			super(EncodeTask.this.getLooper());
 		}
 
         @Override
@@ -119,12 +117,14 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 			case MSG_FINISH:
 				finishInThread();
 				break;
+			default:
+				break;
 			}
         }
 	}
 
-	public GLThread(Context context, SurfaceHolder surfaceHolder , int width , int height, int displayViewWidth, int displayViewHeight, int frameRate, CircularEncoder.OnCricularEncoderEventListener listener) {
-		super("GLThread");
+	public EncodeTask(SurfaceHolder surfaceHolder , int width , int height, int displayViewWidth, int displayViewHeight, int frameRate, CircularEncoder.OnCricularEncoderEventListener listener) {
+		super("EncodeTask");
 
 		mSurfaceHolder = surfaceHolder;
 		mSurfaceHolder.addCallback(this);
@@ -138,16 +138,11 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 
 		Matrix.setIdentityM(mEncodeTextureMatrix, 0);
 		Matrix.translateM(mEncodeTextureMatrix, 0, 0.5f, 0.5f, 0);
-		Matrix.scaleM(mEncodeTextureMatrix, 0, -1, -1, 1);
-		// 这里判断当前的屏幕横竖屏状态来做发送到编码器的图像数据是否需要旋转处理
-		int rotate = context.getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT ? 90 : 180 ;
-		Matrix.rotateM(mEncodeTextureMatrix, 0, rotate, 0, 0, 1);
 		// 左右镜像编码后视频 flip
 		Matrix.rotateM(mEncodeTextureMatrix, 0, 180, 0, 1, 0);
 		Matrix.translateM(mEncodeTextureMatrix, 0, -0.5f, -0.5f, 0);
 
 		initEncoder(listener);
-		//initEncoderSurface();
 	}
 
 	private void initEncoder(CircularEncoder.OnCricularEncoderEventListener listener){
@@ -180,18 +175,20 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 
 	@Override
 	public void run() {
+
 		initGL();
+
 		initEncoderSurface();
 		super.run();
 
 		if (mDisplaySurface != null) {
-			Logger.e(TAG , "[GLThread]mDisplaySurface release");
+			Logger.e(TAG , "[EncodeTask]mDisplaySurface release");
 			mDisplaySurface.release();
 			mDisplaySurface = null;
 		}
 
 		if (mEglCore != null) {
-			Logger.e(TAG , "[GLThread]mEglCore release");
+			Logger.e(TAG , "[EncodeTask]mEglCore release");
 			mEglCore.release();
 			mEglCore = null;
 		}
@@ -202,7 +199,7 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 		//创建egl环境
 		mEglCore = new EglCore(null, EglCore.FLAG_RECORDABLE);
 		//封装egl与对应的surface
-		mDisplaySurface = new WindowSurface(mEglCore,mSurface , false);
+		mDisplaySurface = new WindowSurface(mEglCore, mSurface , false);
 		mDisplaySurface.makeCurrent();
 
 		//drawer封装opengl program相关
@@ -264,8 +261,7 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 
         mCameraTexture.updateTexImage();
         mCameraTexture.getTransformMatrix(mCameraMVPMatrix);
-        // Fill the SurfaceView with it.
-		//GLES20.glViewport(0, 0, mCaptureWidth, mCaptureHeight);
+		//显示图像全部 glViewport 传入当前控件的宽高
 		GLES20.glViewport(0, 0, mDisplayViewWidth, mDisplayViewHeight);
 
 		//通过修改顶点坐标 将采集到的视频按比例缩放到窗口中
@@ -320,11 +316,11 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 			// 给编码器显示的区域
 			GLES20.glViewport(0, 0, mHDEncoder.getWidth() , mHDEncoder.getHeight());
 			// 如果是横屏 不需要设置
-			Matrix.multiplyMM(mTmp2Matrix, 0, mCameraMVPMatrix, 0, mEncodeTextureMatrix, 0);
-			// 恢复为基本scale
+			Matrix.multiplyMM(mEncodeHDMatrix, 0, mCameraMVPMatrix, 0, mEncodeTextureMatrix, 0);
+			// 恢复为基本scales
 			mInternalTexDrawer.rescaleDrawRect(mBaseScaleVertexBuf);
 			// 下面往编码器绘制数据
-			mInternalTexDrawer.drawFrame(mTextureId, mTmp2Matrix);
+			mInternalTexDrawer.drawFrame(mTextureId, mEncodeHDMatrix);
 			mHDEncoder.frameAvailableSoon();
 			mHDEncoderSurface.setPresentationTime(mCameraTexture.getTimestamp());
 			mHDEncoderSurface.swapBuffers();
@@ -344,35 +340,22 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 			// 给编码器显示的区域
 			GLES20.glViewport(0, 0, mEncoder.getWidth() , mEncoder.getHeight());
 			// 如果是横屏 不需要设置
-			Matrix.multiplyMM(mTmp3Matrix, 0, mCameraMVPMatrix, 0, mEncodeTextureMatrix, 0);
+			Matrix.multiplyMM(mEncodeMatrix, 0, mCameraMVPMatrix, 0, mEncodeTextureMatrix, 0);
 			// 恢复为基本scale
 			mInternalTexDrawer.rescaleDrawRect(mBaseScaleVertexBuf);
 			// 下面往编码器绘制数据  mEncoderSurface中维护的egl环境中的win就是 mEncoder中MediaCodec中的surface
 			// 也就是说这一步其实是往编码器MediaCodec中放入了数据
-			mInternalTexDrawer.drawFrame(mTextureId, mTmp3Matrix);
+			mInternalTexDrawer.drawFrame(mTextureId, mEncodeMatrix);
 			//通知从MediaCodec中读取编码完毕的数据
 			mEncoder.frameAvailableSoon();
 			mEncoderSurface.setPresentationTime(mCameraTexture.getTimestamp());
 			mEncoderSurface.swapBuffers();
-
-//			File file = new File("/sdcard/test.png");
-//			try {
-//				mEncoderSurface.saveFrame(file);
-//			} catch (IOException e) {
-//				e.printStackTrace();
-//			}
 
 			Logger.i("lidechen_test", "test3");
 			//mEncoderSurface.readImageTest();
 		}
 
 	}
-
-	public void setSize(int width , int height) {
-		mCaptureWidth = width;
-		mCaptureHeight = height;
-	}
-
 
     public void finish() {
 		Logger.v(TAG , "finish");
@@ -437,7 +420,5 @@ public class GLThread extends HandlerThread implements OnFrameAvailableListener,
 			Logger.d(TAG , "mSurfaceHolder removecallback");
 			mSurfaceHolder.removeCallback(this);
 		}
-
-		//this.finish();
 	}
 }

@@ -22,6 +22,7 @@
         </activity>
         <activity android:name=".MainActivity"/>
         <activity android:name=".OpenglDemoActivity"/>
+        <activity android:name=".DummyActivity"/>
     </application>
 
 </manifest>
