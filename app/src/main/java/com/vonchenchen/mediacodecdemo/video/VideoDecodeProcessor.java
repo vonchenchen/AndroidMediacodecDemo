@@ -28,7 +28,7 @@ public class VideoDecodeProcessor {
 
     private static final String TAG = "VideoDecodeProcessor";
 
-    private volatile boolean mStopPlay;
+    private volatile boolean mIsDecodeLoop;
 
     private SurfaceView mSurfaceView;
     //private DirectDecoder mCircularDecoder;
@@ -56,6 +56,8 @@ public class VideoDecodeProcessor {
     private Surface mDecodeSurface;
 
     private Semaphore mFrameSem = new Semaphore(0);
+    private Object mRenderCtlLock = new Object();
+    private boolean mRenderOk = false;
 
     private final float[] mDecodeMVPMatrix = new float[16];
 
@@ -84,6 +86,13 @@ public class VideoDecodeProcessor {
 
                 mRenderSurface = surfaceHolder.getSurface();
                 Logger.i(TAG, "surfaceCreated mRenderSurface="+mRenderSurface);
+
+                mIsLoop = true;
+                mIsDecodeLoop = true;
+
+                synchronized (mRenderCtlLock) {
+                    mRenderCtlLock.notify();
+                }
             }
 
             @Override
@@ -97,6 +106,9 @@ public class VideoDecodeProcessor {
             public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
 
                 Logger.i(TAG, "surfaceDestroyed mRenderSurface="+mRenderSurface);
+
+                mIsLoop = false;
+                mIsDecodeLoop = false;
             }
         });
     }
@@ -148,28 +160,9 @@ public class VideoDecodeProcessor {
             e.printStackTrace();
         }
 
-        mStopPlay = true;
+        mIsDecodeLoop = true;
 
-        //decode
-        mDecodeThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-
-                int ret = 0;
-                while (mStopPlay) {
-                    ret = mStreamDataReader.readNextFrame();
-                    if(ret <=0){
-
-                        break;
-                    }
-                }
-
-                if(mOnVideoDecodeEventListener != null){
-                    mOnVideoDecodeEventListener.onDecodeFinish();
-                }
-                mIsLoop = false;
-            }
-        });
+        //initDecodeThread();
 
         mIsLoop = true;
 
@@ -178,18 +171,63 @@ public class VideoDecodeProcessor {
             @Override
             public void run() {
 
-                initGLEnv1();
+                while (true) {
 
-                mDecodeThread.start();
+                    //如果surface没有就绪 则等待 如果serface就绪 当前所被释放
+                    if(!mRenderSurface.isValid()) {
+                        try {
+                            synchronized (mRenderCtlLock) {
+                                mRenderCtlLock.wait();
+                            }
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
 
-                decodeLoop();
+                    initGLEnv1();
 
-                release();
+                    initDecodeThread();
+                    //开启解码线程
+                    mDecodeThread.start();
+
+                    //开启渲染loop
+                    renderLoop();
+
+                    release();
+                }
             }
         }).start();
     }
 
-    private void decodeLoop(){
+    private void initDecodeThread(){
+
+        //decode
+        mDecodeThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+
+                    int ret = 0;
+                    while (mIsDecodeLoop) {
+
+                        try {
+                            ret = mStreamDataReader.readNextFrame();
+                            if (ret <= 0) {
+                                break;
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                    if (mOnVideoDecodeEventListener != null) {
+                        mOnVideoDecodeEventListener.onDecodeFinish();
+                    }
+                    //mIsLoop = false;
+            }
+        });
+    }
+
+    private void renderLoop(){
         while (mIsLoop) {
             try {
                 mFrameSem.tryAcquire(1000, TimeUnit.MICROSECONDS);
@@ -213,13 +251,12 @@ public class VideoDecodeProcessor {
             float[] vertex = ScaleUtils.getScaleVertexMat(mSurfaceWidth, mSurfaceHeight, 1280, 720);
             mEXTTexDrawer.rescaleDrawRect(vertex);
 
-//            try {
+            try {
                 mEXTTexDrawer.drawFrame(mTextureId, mDecodeMVPMatrix);
-//            } catch (Exception e) {
-//                //e.printStackTrace();
-//                Logger.e("lidechen_test", "drawFrame Exception="+e.toString());
-//                continue;
-//            }
+            } catch (Exception e) {
+                Logger.e("lidechen_test", "drawFrame Exception="+e.toString());
+                continue;
+            }
             mRendererWindowSurface.swapBuffers();
 
             Logger.i("lidechen_test", "frame ok");
@@ -228,36 +265,7 @@ public class VideoDecodeProcessor {
 
     private void initGLEnv1(){
 
-        //mRenderSurface = mSurfaceView.getHolder().getSurface();
-        //if(mRenderSurface != null && mRenderSurface.isValid()) {
-            initDecoder();
-        //}
-
-//        mSurfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
-//            @Override
-//            public void surfaceCreated(SurfaceHolder surfaceHolder) {
-//
-//                mRenderSurface = surfaceHolder.getSurface();
-//                Logger.i(TAG, "surfaceCreated mRenderSurface="+mRenderSurface);
-//
-//                initDecoder();
-//            }
-//
-//            @Override
-//            public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {
-//                mSurfaceWidth = mSurfaceView.getMeasuredWidth();
-//                mSurfaceHeight = mSurfaceView.getMeasuredHeight();
-//                Logger.i(TAG, "surfaceChanged mRenderSurface="+mRenderSurface);
-//            }
-//
-//            @Override
-//            public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
-//
-//                Logger.i(TAG, "surfaceDestroyed mRenderSurface="+mRenderSurface);
-//
-//                releaseDecoder();
-//            }
-//        });
+        initDecoder();
     }
 
     private void initDecoder(){
@@ -288,13 +296,14 @@ public class VideoDecodeProcessor {
 //        //mDecodeSurface绑定为当前Egl环境的surface 此surface最终会给到MediaCodec 所以不要在外面用这个surface创建egl的surface
 //        mDecodeWindowSurface = new WindowSurface(mEglCore, mDecodeSurface, true);
         mSimpleDecoder = new SimpleDecoder(mWidth, mHeight, mDecodeSurface, mMediaFormatType);
-
     }
 
     public void release(){
-        mStopPlay = false;
+        mIsDecodeLoop = false;
 
         releaseDecoder();
+
+        mRenderSurface.release();
 
         mStreamDataReader.close();
     }

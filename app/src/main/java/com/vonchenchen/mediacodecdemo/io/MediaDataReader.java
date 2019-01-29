@@ -37,6 +37,10 @@ public class MediaDataReader{
 
         int ret = -1;
         try {
+            if(mFileInputStream == null){
+                mTargetFile = new File(mPath);
+                mFileInputStream = new FileInputStream(mTargetFile);
+            }
             ret = mFileInputStream.read(data, 0, length);
             return ret;
         } catch (IOException e) {
@@ -54,6 +58,10 @@ public class MediaDataReader{
 
         int ret = -1;
         try {
+            if(mFileInputStream == null){
+                mTargetFile = new File(mPath);
+                mFileInputStream = new FileInputStream(mTargetFile);
+            }
             ret = mFileInputStream.read(data, index, length);
             return ret;
         } catch (IOException e) {
@@ -71,6 +79,7 @@ public class MediaDataReader{
         if(mFileInputStream != null){
             try {
                 mFileInputStream.close();
+                mFileInputStream = null;
             } catch (IOException e) {
                 Log.e(TAG, "MediaDataReader [close] "+e.toString());
             }

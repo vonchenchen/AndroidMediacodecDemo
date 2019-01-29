@@ -29,7 +29,7 @@ public class MainActivity extends AppCompatActivity {
 
     private VideoEncodeProcessor mVideoEncodeProcessor;
     private VideoDecodeProcessor mH264VideoDecodeProcessor;
-    private VideoDecodeProcessor mVp8VideoDecodeProcessor;
+    //private VideoDecodeProcessor mVp8VideoDecodeProcessor;
 
     private CameraManager.CameraSize mCurrentSize = CameraManager.CameraSize.SIZE_720P;
 
@@ -88,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
 
         //设置解码文件vp8
         String inputPathVp8 = "/sdcard/out.vp8";
-        mVp8VideoDecodeProcessor = new VideoDecodeProcessor(mVp8PlaySurfaceView, inputPathVp8, MediaFormat.MIMETYPE_VIDEO_VP8);
+        //mVp8VideoDecodeProcessor = new VideoDecodeProcessor(mVp8PlaySurfaceView, inputPathVp8, MediaFormat.MIMETYPE_VIDEO_VP8);
 
         mH264VideoDecodeProcessor.setOnVideoDecodeEventListener(new VideoDecodeProcessor.OnVideoDecodeEventListener() {
             @Override
@@ -175,25 +175,32 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        mVp8VideoDecodeProcessor.setOnVideoDecodeEventListener(new VideoDecodeProcessor.OnVideoDecodeEventListener() {
-            @Override
-            public void onDecodeFinish() {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        mVp8VideoDecodeProcessor.release();
-                        mPlayVp8Btn.setText("play vp8");
-                    }
-                });
-            }
-        });
+//        mVp8VideoDecodeProcessor.setOnVideoDecodeEventListener(new VideoDecodeProcessor.OnVideoDecodeEventListener() {
+//            @Override
+//            public void onDecodeFinish() {
+//                runOnUiThread(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        mVp8VideoDecodeProcessor.release();
+//                        mPlayVp8Btn.setText("play vp8");
+//                    }
+//                });
+//            }
+//        });
+//
+//        mPlayVp8Btn.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//
+//                mPlayVp8Btn.setText("stop vp8");
+//                mVp8VideoDecodeProcessor.startPlay(352, 288);
+//            }
+//        });
 
-        mPlayVp8Btn.setOnClickListener(new View.OnClickListener() {
+        findViewById(R.id.btn_simple).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
-                mPlayVp8Btn.setText("stop vp8");
-                mVp8VideoDecodeProcessor.startPlay(352, 288);
+                startActivity(new Intent(MainActivity.this, SimpleDemoActivity.class));
             }
         });
 
