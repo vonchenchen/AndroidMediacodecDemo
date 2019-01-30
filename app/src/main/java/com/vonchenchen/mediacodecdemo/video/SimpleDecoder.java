@@ -69,8 +69,6 @@ public class SimpleDecoder {
 
     public int decode(byte[] input, int offset, int count , long pts) {
 
-        Logger.d(TAG,"lidechen_test debug1");
-
         ByteBuffer[] inputBuffers = mMediaCodec.getInputBuffers();
         int inputBufferIndex = mMediaCodec.dequeueInputBuffer(DEFAULT_TIMEOUT_US);
         if (inputBufferIndex >= 0) {
@@ -80,8 +78,6 @@ public class SimpleDecoder {
             mMediaCodec.queueInputBuffer(inputBufferIndex, 0, count, pts, 0);
         }
 
-        Logger.d(TAG,"lidechen_test debug2");
-
         MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
         int outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, DEFAULT_TIMEOUT_US);
         Logger.d(TAG , "decode outputBufferIndex " + outputBufferIndex);
@@ -90,8 +86,6 @@ public class SimpleDecoder {
         mFrameWidth = format.getInteger(MediaFormat.KEY_WIDTH);
         mFrameHeight = format.getInteger(MediaFormat.KEY_HEIGHT);
         Logger.d(TAG , "mFrameWidth=" + mFrameWidth+ " mFrameHeight="+mFrameHeight);
-
-        Logger.d(TAG,"lidechen_test debug3");
 
         if (outputBufferIndex >= 0) {
 
@@ -109,8 +103,6 @@ public class SimpleDecoder {
 
             mMediaCodec.releaseOutputBuffer(outputBufferIndex, true);
         }
-
-        Logger.d(TAG,"lidechen_test debug4");
 
         return outputBufferIndex;
     }

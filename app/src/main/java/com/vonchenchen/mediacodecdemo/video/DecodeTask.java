@@ -53,20 +53,28 @@ public class DecodeTask extends Thread{
             @Override
             public void onParsed(byte[] data, int index, int length) {
 
-                Logger.e(TAG, "lidechen_test decode1 ");
-                //解码线程中解码
-                int ret = mRenderTask.decode(data, index, length, mPts++);
-                Logger.e(TAG, "lidechen_test decode2 ret="+ret);
-
-                //通知渲染线程渲染
-                CodecMsg msg = new CodecMsg();
-                msg.currentMsg = CodecMsg.MSG.MSG_DECODE_FRAME_READY;
-                mRenderTask.pushAsyncNotify(msg);
-
                 try {
+                    Logger.e(TAG, "lidechen_test decode1 ");
+                    //解码线程中解码
+                    int ret = mRenderTask.decode(data, index, length, mPts++);
+                    Logger.e(TAG, "lidechen_test decode2 ret="+ret);
+
+                    //通知渲染线程渲染
+                    CodecMsg msg = new CodecMsg();
+                    msg.currentMsg = CodecMsg.MSG.MSG_DECODE_FRAME_READY;
+                    mRenderTask.pushAsyncNotify(msg);
+
                     Thread.sleep(50);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+
+                } catch (Exception e) {
+                    Logger.e(TAG, "lidechen_test [onParsed] exception "+e.toString());
+
+                    //测试推后台时会抛出异常 为了避免读取太快 此处延时处理
+                    try {
+                        Thread.sleep(50);
+                    } catch (InterruptedException e1) {
+                        e1.printStackTrace();
+                    }
                 }
             }
         });
@@ -74,15 +82,18 @@ public class DecodeTask extends Thread{
 
     public void startDecodeTask(){
 
+        if(mRenderTask != null){
+            mRenderTask.stopRender();
+        }
+
         mRenderTask = new RenderTask();
         mRenderTask.setOnRenderEventListener(new RenderTask.OnRenderEventListener() {
             @Override
-            public void onTaskStart() {
+            public void onTaskPrepare() {
 
                 if(!mIsDecodeTaskRunning) {
                     mIsDecodeTaskRunning = true;
-
-                    //解码器与渲染环境准本就绪 可以开始解码和渲染
+                    //解码器与渲染环境准本就绪 才能开始解码和渲染
                     DecodeTask.this.start();
                 }
             }
@@ -126,8 +137,6 @@ public class DecodeTask extends Thread{
         mIsDecodeTaskRunning = false;
         release();
         Logger.d(TAG, "lidechen_test decode thread end");
-
-        mRenderTask.stopRender();
 
         if(mDecodeTaskEventListener != null){
             mDecodeTaskEventListener.onDecodeThreadEnd();

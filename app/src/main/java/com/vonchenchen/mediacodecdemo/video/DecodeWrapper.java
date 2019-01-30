@@ -30,7 +30,6 @@ public class DecodeWrapper {
     }
 
     public int decode(byte[] input, int offset, int count , long pts){
-        Logger.d(TAG,"lidechen_test debug0.6");
         return mSimpleDecoder.decode(input, offset, count, pts);
     }
 

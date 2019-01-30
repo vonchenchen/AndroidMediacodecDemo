@@ -80,11 +80,11 @@ public class RenderTask {
             public void onPipeStart() {
 
                 Logger.i(TAG, "lidechen_test onPipeStart");
-                initGLEnv();
 
-                if(mOnRenderEventListener != null){
-                    mOnRenderEventListener.onTaskStart();
-                }
+//                initGLEnv();
+//                if(mOnRenderEventListener != null){
+//                    mOnRenderEventListener.onTaskPrepare();
+//                }
             }
 
             @Override
@@ -92,7 +92,21 @@ public class RenderTask {
 
                 int ret = 0;
 
-                if(msg.currentMsg == CodecMsg.MSG.MSG_DECODE_FRAME_READY){
+                if(msg.currentMsg == CodecMsg.MSG.MSG_RESUME_RENDER_TASK) {
+
+                    Logger.d(TAG, "[onPipeRecv] MSG_RESUME_RENDER_TASK");
+
+                    initGLEnv();
+                    if(mOnRenderEventListener != null){
+                        mOnRenderEventListener.onTaskPrepare();
+                    }
+                }else if(msg.currentMsg == CodecMsg.MSG.MSG_PAUSE_RENDER_TASK){
+
+                    Logger.d(TAG, "[onPipeRecv] MSG_PAUSE_RENDER_TASK");
+
+                    mRenderSurfaceHolder.addCallback(mHolderCallback);
+                    release();
+                }else if(msg.currentMsg == CodecMsg.MSG.MSG_DECODE_FRAME_READY){
 
                     Logger.d(TAG, "[onPipeRecv] MSG_DECODE_FRAME_READY");
 
@@ -129,6 +143,23 @@ public class RenderTask {
     public void startRender(){
 
         mMsgQueue.startPipe();
+
+        //清空消息管道 发送开始渲染消息
+        mMsgQueue.clearPipeData();
+        CodecMsg msg = getResumeRenderMsg();
+        mMsgQueue.addLast(msg);
+    }
+
+    private CodecMsg getResumeRenderMsg(){
+        CodecMsg msg = new CodecMsg();
+        msg.currentMsg = CodecMsg.MSG.MSG_RESUME_RENDER_TASK;
+        return msg;
+    }
+
+    private CodecMsg getPauseRenderMsg(){
+        CodecMsg msg = new CodecMsg();
+        msg.currentMsg = CodecMsg.MSG.MSG_PAUSE_RENDER_TASK;
+        return msg;
     }
 
     public void stopRender(){
@@ -201,7 +232,6 @@ public class RenderTask {
     }
 
     public int decode(byte[] input, int offset, int count , long pts){
-        Logger.d(TAG,"lidechen_test debug0.5");
         return mDecodeWrapper.decode(input, offset, count, pts);
     }
 
@@ -209,9 +239,9 @@ public class RenderTask {
 
         mMsgQueue.clearPipeData();
 
-        if(mRenderSurfaceHolder != null){
-            mRenderSurfaceHolder.removeCallback(mHolderCallback);
-        }
+//        if(mRenderSurfaceHolder != null){
+//            mRenderSurfaceHolder.removeCallback(mHolderCallback);
+//        }
 
         if(mRendererWindowSurface != null){
             mRendererWindowSurface.release();
@@ -233,6 +263,7 @@ public class RenderTask {
             mDecodeSurface = null;
         }
 
+        //先释放渲染surface相关 再释放egl相关 否则再次使用渲染surface创建egl环境报错
         if(mEglCore != null){
             mEglCore.release();
             mEglCore = null;
@@ -249,7 +280,7 @@ public class RenderTask {
     }
 
     public interface OnRenderEventListener{
-        void onTaskStart();
+        void onTaskPrepare();
         void onTaskEnd();
     }
 
@@ -258,8 +289,17 @@ public class RenderTask {
         @Override
         public void surfaceCreated(SurfaceHolder surfaceHolder) {
             mRenderSurface = surfaceHolder.getSurface();
+
             mSurfaceWidth = mRenderSurfaceView.getMeasuredWidth();
             mSurfaceHeight = mRenderSurfaceView.getMeasuredHeight();
+
+            CodecMsg msg = getResumeRenderMsg();
+            mMsgQueue.addFirst(msg);
+
+            mRenderSurfaceHolder = surfaceHolder;
+            mRenderSurfaceHolder.addCallback(mHolderCallback);
+
+            Logger.i(TAG, "lidechen_test surface surfaceCreated");
         }
 
         @Override
@@ -267,11 +307,19 @@ public class RenderTask {
 
             mSurfaceWidth = mRenderSurfaceView.getMeasuredWidth();
             mSurfaceHeight = mRenderSurfaceView.getMeasuredHeight();
+
+            Logger.i(TAG, "lidechen_test surface surfaceChanged");
         }
 
         @Override
         public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
 
+            CodecMsg msg = getPauseRenderMsg();
+            mMsgQueue.addFirst(msg);
+
+            mRenderSurfaceHolder = surfaceHolder;
+
+            Logger.i(TAG, "lidechen_test surface surfaceDestroyed");
         }
     }
 }

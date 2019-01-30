@@ -6,7 +6,7 @@ public class MsgPipe<T> extends Thread{
 
     private static final String TAG = "MsgPipe";
 
-    private LinkedList<T> mMsgQueue;
+    private LinkedList<T> mMsgQueue = new LinkedList();
     private OnPipeListener mOnPipeListener = null;
 
     private volatile boolean mIsLoop;
@@ -15,7 +15,6 @@ public class MsgPipe<T> extends Thread{
     public void run() {
 
         T msg = null;
-        mMsgQueue = new LinkedList();
 
         if (mOnPipeListener != null) {
             mOnPipeListener.onPipeStart();
