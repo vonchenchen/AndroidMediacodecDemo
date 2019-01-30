@@ -244,6 +244,7 @@ public final class EglCore {
         if (eglSurface == null) {
             throw new RuntimeException("surface was null");
         }
+
         return eglSurface;
     }
 

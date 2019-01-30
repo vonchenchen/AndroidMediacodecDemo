@@ -29,6 +29,10 @@ public class RenderTask {
 
     /** 当前要渲染的SurfaceView */
     private SurfaceView mRenderSurfaceView;
+    /** mRenderSurfaceView的holder */
+    private SurfaceHolder mRenderSurfaceHolder;
+    private HolderCallback mHolderCallback;
+
     /** 真实渲染surface */
     private WindowSurface mRendererWindowSurface;
 
@@ -51,37 +55,22 @@ public class RenderTask {
     public RenderTask(){
 
         mMsgQueue = new MsgPipe();
+        mHolderCallback = new HolderCallback();
     }
 
-    public void init(int width, int height, SurfaceView surfaceView, String mediaFormatType){
+    public void initRender(int width, int height, SurfaceView surfaceView, String mediaFormatType){
 
         mWidth = width;
         mHeight = height;
         mRenderSurfaceView = surfaceView;
 
-        mRenderSurfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
-            @Override
-            public void surfaceCreated(SurfaceHolder surfaceHolder) {
-                mRenderSurface = surfaceHolder.getSurface();
-                mSurfaceWidth = mRenderSurfaceView.getMeasuredWidth();
-                mSurfaceHeight = mRenderSurfaceView.getMeasuredHeight();
-            }
+        mRenderSurfaceHolder = mRenderSurfaceView.getHolder();
 
-            @Override
-            public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {
+        mRenderSurfaceHolder.addCallback(mHolderCallback);
 
-                mSurfaceWidth = mRenderSurfaceView.getMeasuredWidth();
-                mSurfaceHeight = mRenderSurfaceView.getMeasuredHeight();
-            }
-
-            @Override
-            public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
-
-            }
-        });
-
+        //如果当前渲染surface就绪 则赋值  否则在就绪回调中赋值
         if(surfaceView.getHolder().getSurface().isValid()){
-            mRenderSurface = surfaceView.getHolder().getSurface();
+            mRenderSurface = mRenderSurfaceHolder.getSurface();
             mSurfaceWidth = mRenderSurfaceView.getMeasuredWidth();
             mSurfaceHeight = mRenderSurfaceView.getMeasuredHeight();
         }
@@ -104,23 +93,49 @@ public class RenderTask {
                 int ret = 0;
 
                 if(msg.currentMsg == CodecMsg.MSG.MSG_DECODE_FRAME_READY){
-                    //解码成功
-                    ret = renderToRenderSurface();
+
+                    Logger.d(TAG, "[onPipeRecv] MSG_DECODE_FRAME_READY");
+
+                    //解码成功 开始渲染
+                    try {
+                        ret = renderToRenderSurface();
+                    }catch (Exception e){
+                        Logger.e(TAG, "lidechen_test onPipeRecv "+e.toString());
+                    }
                     Logger.i(TAG, "lidechen_test renderToRenderSurface ret="+ret);
                 }else if(msg.currentMsg == CodecMsg.MSG.MSG_STOP_RENDER_TASK){
 
+                    Logger.d(TAG, "[onPipeRecv] MSG_STOP_RENDER_TASK");
+
+                    //停止解码任务
+                    mMsgQueue.stopPipe();
                 }
             }
 
             @Override
             public void onPipeRelease() {
 
+                //任务停止后清除资源
+                release();
+
                 if(mOnRenderEventListener != null){
                     mOnRenderEventListener.onTaskEnd();
                 }
             }
         });
+
+    }
+
+    public void startRender(){
+
         mMsgQueue.startPipe();
+    }
+
+    public void stopRender(){
+
+        CodecMsg codecMsg = new CodecMsg();
+        codecMsg.currentMsg = CodecMsg.MSG.MSG_STOP_RENDER_TASK;
+        mMsgQueue.addLast(codecMsg);
     }
 
     /**
@@ -158,7 +173,7 @@ public class RenderTask {
         mDecodeSurface = new Surface(mDecodeSurfaceTexture);
 //        //mDecodeSurface绑定为当前Egl环境的surface 此surface最终会给到MediaCodec 所以不要在外面用这个surface创建egl的surface
 //        mDecodeWindowSurface = new WindowSurface(mEglCore, mDecodeSurface, true);
-        //mSimpleDecoder = new SimpleDecoder(mWidth, mHeight, mDecodeSurface, mMediaFormatType);
+
         mDecodeWrapper = new DecodeWrapper();
         mDecodeWrapper.init(mWidth, mHeight, mDecodeSurface, mMediaFormatType);
     }
@@ -180,12 +195,7 @@ public class RenderTask {
         float[] vertex = ScaleUtils.getScaleVertexMat(mSurfaceWidth, mSurfaceHeight, 1280, 720);
         mEXTTexDrawer.rescaleDrawRect(vertex);
 
-        try {
-            mEXTTexDrawer.drawFrame(mTextureId, mDecodeMVPMatrix);
-        } catch (Exception e) {
-            Logger.e("lidechen_test", "drawFrame Exception="+e.toString());
-            return -1;
-        }
+        mEXTTexDrawer.drawFrame(mTextureId, mDecodeMVPMatrix);
         mRendererWindowSurface.swapBuffers();
         return 0;
     }
@@ -195,6 +205,45 @@ public class RenderTask {
         return mDecodeWrapper.decode(input, offset, count, pts);
     }
 
+    private void release(){
+
+        mMsgQueue.clearPipeData();
+
+        if(mRenderSurfaceHolder != null){
+            mRenderSurfaceHolder.removeCallback(mHolderCallback);
+        }
+
+        if(mRendererWindowSurface != null){
+            mRendererWindowSurface.release();
+            mRendererWindowSurface = null;
+        }
+
+        if(mEXTTexDrawer != null){
+            mEXTTexDrawer.release(true);
+            mEXTTexDrawer = null;
+        }
+
+        if(mDecodeSurfaceTexture != null){
+            mDecodeSurfaceTexture.release();
+            mDecodeSurfaceTexture = null;
+        }
+
+        if(mDecodeSurface != null){
+            mDecodeSurface.release();
+            mDecodeSurface = null;
+        }
+
+        if(mEglCore != null){
+            mEglCore.release();
+            mEglCore = null;
+        }
+
+        if(mDecodeWrapper != null) {
+            mDecodeWrapper.release();
+            mDecodeWrapper = null;
+        }
+    }
+
     public void setOnRenderEventListener(OnRenderEventListener onRenderEventListener){
         mOnRenderEventListener = onRenderEventListener;
     }
@@ -202,5 +251,27 @@ public class RenderTask {
     public interface OnRenderEventListener{
         void onTaskStart();
         void onTaskEnd();
+    }
+
+    class HolderCallback implements SurfaceHolder.Callback{
+
+        @Override
+        public void surfaceCreated(SurfaceHolder surfaceHolder) {
+            mRenderSurface = surfaceHolder.getSurface();
+            mSurfaceWidth = mRenderSurfaceView.getMeasuredWidth();
+            mSurfaceHeight = mRenderSurfaceView.getMeasuredHeight();
+        }
+
+        @Override
+        public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {
+
+            mSurfaceWidth = mRenderSurfaceView.getMeasuredWidth();
+            mSurfaceHeight = mRenderSurfaceView.getMeasuredHeight();
+        }
+
+        @Override
+        public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
+
+        }
     }
 }

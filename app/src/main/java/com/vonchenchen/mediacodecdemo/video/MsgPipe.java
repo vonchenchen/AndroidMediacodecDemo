@@ -72,6 +72,12 @@ public class MsgPipe<T> extends Thread{
         mIsLoop = false;
     }
 
+    public void clearPipeData(){
+        if(mMsgQueue != null){
+            mMsgQueue.clear();
+        }
+    }
+
     public void setOnPipeListener(OnPipeListener listener){
         mOnPipeListener = listener;
     }

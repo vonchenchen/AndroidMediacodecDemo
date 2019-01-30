@@ -1,6 +1,7 @@
 package com.vonchenchen.mediacodecdemo;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.media.MediaFormat;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -37,19 +38,39 @@ public class SimpleDemoActivity extends Activity{
                     mStartPlay.setText("stopPlay");
                     mIsStartPlay = true;
 
+                    String inputPathAvc = "/sdcard/test.h264";
+                    mDecodeTask = new DecodeTask(inputPathAvc);
+                    mDecodeTask.setDecodeTaskEventListener(new DecodeTask.DecodeTaskEventListener() {
+                        @Override
+                        public void onDecodeThreadEnd() {
+
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mStartPlay.setText("startPlay");
+                                    mIsStartPlay = false;
+                                }
+                            });
+                        }
+                    });
+
                     //模拟不断收到h264流
                     mDecodeTask.initTask(1280, 720, mMainSurfaceView, MediaFormat.MIMETYPE_VIDEO_AVC);
-                    mDecodeTask.startTask();
+                    mDecodeTask.startDecodeTask();
                 }else {
                     mStartPlay.setText("startPlay");
                     mIsStartPlay = false;
 
-                    mDecodeTask.stopTask();
+                    mDecodeTask.stopDecodeTask();
                 }
             }
         });
 
-        String inputPathAvc = "/sdcard/test.h264";
-        mDecodeTask = new DecodeTask(inputPathAvc);
+        findViewById(R.id.btn_testback).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(SimpleDemoActivity.this, DummyActivity.class));
+            }
+        });
     }
 }

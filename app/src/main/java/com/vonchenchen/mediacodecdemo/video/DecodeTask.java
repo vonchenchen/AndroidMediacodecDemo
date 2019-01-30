@@ -1,6 +1,5 @@
 package com.vonchenchen.mediacodecdemo.video;
 
-import android.view.Surface;
 import android.view.SurfaceView;
 
 import com.vonchenchen.mediacodecdemo.io.H264DataReader;
@@ -27,6 +26,10 @@ public class DecodeTask extends Thread{
     private int mHeight;
     private String mMediaFormatType;
 
+    private boolean mIsDecodeTaskRunning = false;
+
+    private DecodeTaskEventListener mDecodeTaskEventListener = null;
+
     public DecodeTask(String path){
         mPath = path;
     }
@@ -43,7 +46,7 @@ public class DecodeTask extends Thread{
         try {
             mH264DataReader = new H264DataReader(mPath , 1280*720*3);
         } catch (FileNotFoundException e) {
-            Logger.e(TAG, "[init] "+e.toString());
+            Logger.e(TAG, "[initRender] "+e.toString());
         }
 
         mH264DataReader.setOnDataParsedListener(new IStreamDataReader.OnDataParsedListener() {
@@ -69,15 +72,19 @@ public class DecodeTask extends Thread{
         });
     }
 
-    public void startTask(){
+    public void startDecodeTask(){
 
         mRenderTask = new RenderTask();
         mRenderTask.setOnRenderEventListener(new RenderTask.OnRenderEventListener() {
             @Override
             public void onTaskStart() {
 
-                //解码器与渲染环境准本就绪 可以开始解码和渲染
-                start();
+                if(!mIsDecodeTaskRunning) {
+                    mIsDecodeTaskRunning = true;
+
+                    //解码器与渲染环境准本就绪 可以开始解码和渲染
+                    DecodeTask.this.start();
+                }
             }
 
             @Override
@@ -85,14 +92,17 @@ public class DecodeTask extends Thread{
 
             }
         });
-        mRenderTask.init(mWidth, mHeight, mRenderSurfaceView, mMediaFormatType);
+        mRenderTask.initRender(mWidth, mHeight, mRenderSurfaceView, mMediaFormatType);
+        mRenderTask.startRender();
     }
 
-    public void stopTask(){
+    public void stopDecodeTask(){
         mIsLoop = false;
+        mRenderTask.stopRender();
     }
 
     private void release(){
+        //停止读取
         mH264DataReader.close();
     }
 
@@ -110,8 +120,25 @@ public class DecodeTask extends Thread{
             if(ret <= 0){
                 mIsLoop = false;
             }
+            Logger.d(TAG, "lidechen_test ret="+ret);
         }
 
+        mIsDecodeTaskRunning = false;
         release();
+        Logger.d(TAG, "lidechen_test decode thread end");
+
+        mRenderTask.stopRender();
+
+        if(mDecodeTaskEventListener != null){
+            mDecodeTaskEventListener.onDecodeThreadEnd();
+        }
+    }
+
+    public void setDecodeTaskEventListener(DecodeTaskEventListener listener){
+        mDecodeTaskEventListener = listener;
+    }
+
+    public interface DecodeTaskEventListener{
+        void onDecodeThreadEnd();
     }
 }
