@@ -29,6 +29,8 @@ public class RenderTask {
 
     /** 当前要渲染的SurfaceView */
     private SurfaceView mRenderSurfaceView;
+    private String mMediaFormatType;
+
     /** mRenderSurfaceView的holder */
     private SurfaceHolder mRenderSurfaceHolder;
     private HolderCallback mHolderCallback;
@@ -45,10 +47,11 @@ public class RenderTask {
     private Surface mRenderSurface;
     private int mWidth;
     private int mHeight;
-    private String mMediaFormatType;
 
     private int mSurfaceWidth;
     private int mSurfaceHeight;
+
+    private boolean mIsGLEnvReady = false;
 
     private OnRenderEventListener mOnRenderEventListener = null;
 
@@ -63,6 +66,7 @@ public class RenderTask {
         mWidth = width;
         mHeight = height;
         mRenderSurfaceView = surfaceView;
+        mMediaFormatType = mediaFormatType;
 
         mRenderSurfaceHolder = mRenderSurfaceView.getHolder();
 
@@ -97,10 +101,15 @@ public class RenderTask {
                     Logger.d(TAG, "[onPipeRecv] MSG_RESUME_RENDER_TASK");
 
                     initGLEnv();
+
+                    mIsGLEnvReady = true;
+
                     if(mOnRenderEventListener != null){
                         mOnRenderEventListener.onTaskPrepare();
                     }
                 }else if(msg.currentMsg == CodecMsg.MSG.MSG_PAUSE_RENDER_TASK){
+
+                    mIsGLEnvReady = false;
 
                     Logger.d(TAG, "[onPipeRecv] MSG_PAUSE_RENDER_TASK");
 
@@ -109,6 +118,10 @@ public class RenderTask {
                 }else if(msg.currentMsg == CodecMsg.MSG.MSG_DECODE_FRAME_READY){
 
                     Logger.d(TAG, "[onPipeRecv] MSG_DECODE_FRAME_READY");
+
+                    if(!mIsGLEnvReady){
+                        return;
+                    }
 
                     //解码成功 开始渲染
                     try {
@@ -232,6 +245,9 @@ public class RenderTask {
     }
 
     public int decode(byte[] input, int offset, int count , long pts){
+        if(!mIsGLEnvReady){
+            return -1000;
+        }
         return mDecodeWrapper.decode(input, offset, count, pts);
     }
 
@@ -239,9 +255,9 @@ public class RenderTask {
 
         mMsgQueue.clearPipeData();
 
-//        if(mRenderSurfaceHolder != null){
-//            mRenderSurfaceHolder.removeCallback(mHolderCallback);
-//        }
+        if(mRenderSurface != null){
+            mRenderSurface.release();
+        }
 
         if(mRendererWindowSurface != null){
             mRendererWindowSurface.release();
@@ -249,7 +265,7 @@ public class RenderTask {
         }
 
         if(mEXTTexDrawer != null){
-            mEXTTexDrawer.release(true);
+            mEXTTexDrawer.release(false);
             mEXTTexDrawer = null;
         }
 
@@ -296,9 +312,6 @@ public class RenderTask {
             CodecMsg msg = getResumeRenderMsg();
             mMsgQueue.addFirst(msg);
 
-            mRenderSurfaceHolder = surfaceHolder;
-            mRenderSurfaceHolder.addCallback(mHolderCallback);
-
             Logger.i(TAG, "lidechen_test surface surfaceCreated");
         }
 
@@ -316,8 +329,6 @@ public class RenderTask {
 
             CodecMsg msg = getPauseRenderMsg();
             mMsgQueue.addFirst(msg);
-
-            mRenderSurfaceHolder = surfaceHolder;
 
             Logger.i(TAG, "lidechen_test surface surfaceDestroyed");
         }

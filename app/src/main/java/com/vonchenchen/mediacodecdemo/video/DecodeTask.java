@@ -6,6 +6,7 @@ import com.vonchenchen.mediacodecdemo.io.H264DataReader;
 import com.vonchenchen.mediacodecdemo.io.IStreamDataReader;
 
 import java.io.FileNotFoundException;
+import java.util.Arrays;
 
 public class DecodeTask extends Thread{
 
@@ -55,14 +56,17 @@ public class DecodeTask extends Thread{
 
                 try {
                     Logger.e(TAG, "lidechen_test decode1 ");
+                    Logger.e(TAG, "lidechen_test decode array="+ Arrays.toString(data));
                     //解码线程中解码
                     int ret = mRenderTask.decode(data, index, length, mPts++);
                     Logger.e(TAG, "lidechen_test decode2 ret="+ret);
 
-                    //通知渲染线程渲染
-                    CodecMsg msg = new CodecMsg();
-                    msg.currentMsg = CodecMsg.MSG.MSG_DECODE_FRAME_READY;
-                    mRenderTask.pushAsyncNotify(msg);
+                    if(ret >= 0) {
+                        //解码成功 通知渲染线程渲染
+                        CodecMsg msg = new CodecMsg();
+                        msg.currentMsg = CodecMsg.MSG.MSG_DECODE_FRAME_READY;
+                        mRenderTask.pushAsyncNotify(msg);
+                    }
 
                     Thread.sleep(50);
 
