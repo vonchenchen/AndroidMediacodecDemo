@@ -56,7 +56,7 @@ public class DecodeTask extends Thread{
 
                 try {
                     Logger.e(TAG, "lidechen_test decode1 ");
-                    Logger.e(TAG, "lidechen_test decode array="+ Arrays.toString(data));
+                    //Logger.e(TAG, "lidechen_test decode array="+ Arrays.toString(data));
                     //解码线程中解码
                     int ret = mRenderTask.decode(data, index, length, mPts++);
                     Logger.e(TAG, "lidechen_test decode2 ret="+ret);

@@ -34,6 +34,15 @@ public class DecodeWrapper {
     }
 
     public void release(){
-        mSimpleDecoder.close();
+
+        if(mDecodeSurface != null) {
+            mDecodeSurface.release();
+            mDecodeSurface = null;
+        }
+
+        if(mSimpleDecoder != null) {
+            mSimpleDecoder.close();
+            mSimpleDecoder = null;
+        }
     }
 }

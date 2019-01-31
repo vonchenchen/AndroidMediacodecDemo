@@ -11,6 +11,8 @@ import com.vonchenchen.mediacodecdemo.video.egl.WindowSurface;
 import com.vonchenchen.mediacodecdemo.video.gles.FullFrameRect;
 import com.vonchenchen.mediacodecdemo.video.gles.Texture2dProgram;
 
+import java.util.Arrays;
+
 public class RenderTask {
 
     private static final String TAG = "RenderTask";
@@ -100,6 +102,7 @@ public class RenderTask {
 
                     Logger.d(TAG, "[onPipeRecv] MSG_RESUME_RENDER_TASK");
 
+                    release();
                     initGLEnv();
 
                     mIsGLEnvReady = true;
@@ -136,6 +139,10 @@ public class RenderTask {
 
                     //停止解码任务
                     mMsgQueue.stopPipe();
+
+                    //发一条空消息 避免线程等待
+                    CodecMsg msgEmpty = new CodecMsg();
+                    mMsgQueue.addFirst(msgEmpty);
                 }
             }
 
@@ -248,16 +255,25 @@ public class RenderTask {
         if(!mIsGLEnvReady){
             return -1000;
         }
+
+//        byte[] data = new byte[6];
+//        for(int i=0; i<6; i++){
+//            data[i] = input[i];
+//        }
+//        String str = Arrays.toString(data);
+//        Logger.i(TAG, "lidechen_test decode="+str);
+
         return mDecodeWrapper.decode(input, offset, count, pts);
+        //return -1;
     }
 
     private void release(){
 
         mMsgQueue.clearPipeData();
 
-        if(mRenderSurface != null){
-            mRenderSurface.release();
-        }
+//        if(mRenderSurface != null){
+//            mRenderSurface.release();
+//        }
 
         if(mRendererWindowSurface != null){
             mRendererWindowSurface.release();
@@ -308,6 +324,8 @@ public class RenderTask {
 
             mSurfaceWidth = mRenderSurfaceView.getMeasuredWidth();
             mSurfaceHeight = mRenderSurfaceView.getMeasuredHeight();
+
+            //initRender(mWidth, mHeight, mRenderSurfaceView, mMediaFormatType);
 
             CodecMsg msg = getResumeRenderMsg();
             mMsgQueue.addFirst(msg);

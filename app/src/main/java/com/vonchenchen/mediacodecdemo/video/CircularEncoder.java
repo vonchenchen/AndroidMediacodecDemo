@@ -396,7 +396,7 @@ public class CircularEncoder {
                             Logger.v(TAG , "OnEncodedData BUFFER_FLAG_CODEC_CONFIG " + configbyte.length);
                         }
 
-                        Logger.d(TAG, "drainVideoEncoder CODEC_CONFIG: "+ toString(outData));
+                        //Logger.d(TAG, "drainVideoEncoder CODEC_CONFIG: "+ toString(outData));
 
                         if(mOnCricularEncoderEventListener != null){
                             mOnCricularEncoderEventListener.onConfigFrameReceive(outData, mBufferInfo.size);
@@ -404,7 +404,6 @@ public class CircularEncoder {
 
                     } else if (mBufferInfo.flags == MediaCodec.BUFFER_FLAG_SYNC_FRAME) {
 
-                        //KEY FRAME
                         byte[] keyframe = new byte[mBufferInfo.size + configbyte.length];
                         System.arraycopy(configbyte, 0, keyframe, 0, configbyte.length);
                         System.arraycopy(outData, 0, keyframe, configbyte.length, outData.length);
@@ -416,7 +415,7 @@ public class CircularEncoder {
                         Logger.d(TAG, "drainVideoEncoder CODEC_SYNC_FRAME: "+ toString(outData));
 
                         if(mOnCricularEncoderEventListener != null){
-                            mOnCricularEncoderEventListener.onKeyFrameReceive(outData, mBufferInfo.size);
+                            mOnCricularEncoderEventListener.onKeyFrameReceive(keyframe, keyframe.length);
                         }
 
                         mFrameCount ++;
