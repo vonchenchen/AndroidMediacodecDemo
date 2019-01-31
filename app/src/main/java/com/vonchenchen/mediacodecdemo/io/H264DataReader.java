@@ -33,6 +33,8 @@ public class H264DataReader extends MediaDataReader implements IStreamDataReader
                 boolean isFind = false;
                 for(int j=i+1; j<mDataRearIndex; j++){
                     if(isH264Header(mData, j)){
+
+                        //卡顿可能是idr分开读取引起
                         int dataLen = j-i;
                         if(mOnDataParsedListener != null){
                             mOnDataParsedListener.onParsed(mData, i, dataLen);

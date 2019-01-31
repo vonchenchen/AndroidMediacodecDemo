@@ -256,12 +256,12 @@ public class RenderTask {
             return -1000;
         }
 
-//        byte[] data = new byte[6];
-//        for(int i=0; i<6; i++){
-//            data[i] = input[i];
-//        }
-//        String str = Arrays.toString(data);
-//        Logger.i(TAG, "lidechen_test decode="+str);
+        byte[] data = new byte[6];
+        for(int i=0; i<6; i++){
+            data[i] = input[i];
+        }
+        String str = Arrays.toString(data);
+        Logger.i(TAG, "lidechen_test decode="+str);
 
         return mDecodeWrapper.decode(input, offset, count, pts);
         //return -1;

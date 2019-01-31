@@ -390,13 +390,13 @@ public class CircularEncoder {
                     if (mBufferInfo.flags == MediaCodec.BUFFER_FLAG_CODEC_CONFIG) {
 
                         //SPS PPS
-                        configbyte = new byte[outData.length - HEADER_LENGTH];
-                        System.arraycopy(outData, HEADER_LENGTH, configbyte, 0, configbyte.length);
+                        configbyte = new byte[outData.length];
+                        System.arraycopy(outData, 0, configbyte, 0, configbyte.length);
                         if (VERBOSE){
                             Logger.v(TAG , "OnEncodedData BUFFER_FLAG_CODEC_CONFIG " + configbyte.length);
                         }
 
-                        //Logger.d(TAG, "drainVideoEncoder CODEC_CONFIG: "+ toString(outData));
+                        Logger.d(TAG, "drainVideoEncoder CODEC_CONFIG: "+ toString(outData));
 
                         if(mOnCricularEncoderEventListener != null){
                             mOnCricularEncoderEventListener.onConfigFrameReceive(outData, mBufferInfo.size);
@@ -412,7 +412,7 @@ public class CircularEncoder {
                             Logger.v(TAG , "OnEncodedData BUFFER_FLAG_SYNC_FRAME " + keyframe.length);
                         }
 
-                        Logger.d(TAG, "drainVideoEncoder CODEC_SYNC_FRAME: "+ toString(outData));
+                        Logger.d(TAG, "drainVideoEncoder CODEC_SYNC_FRAME: "+ toString(keyframe));
 
                         if(mOnCricularEncoderEventListener != null){
                             mOnCricularEncoderEventListener.onKeyFrameReceive(keyframe, keyframe.length);
