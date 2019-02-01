@@ -20,7 +20,6 @@ public class RenderTask {
 
     private DecodeWrapper mDecodeWrapper;
 
-    private EglCore mEglCoreRec = null;
     private EglCore mEglCore;
     /** 接收解码数据纹理 glGenTexture生成 */
     private int mTextureId;
@@ -53,7 +52,7 @@ public class RenderTask {
     private int mSurfaceWidth;
     private int mSurfaceHeight;
 
-    /** 渲染环境是否就绪 */
+    /** 渲染环境是否就绪 只有就绪才能渲染 */
     private boolean mIsRenderEnvReady = false;
 
     private OnRenderEventListener mOnRenderEventListener = null;
@@ -62,10 +61,6 @@ public class RenderTask {
 
         mMsgQueue = new MsgPipe();
         mHolderCallback = new HolderCallback();
-
-//        if(mEglCoreRec == null) {
-//            mEglCoreRec = new EglCore(null, EglCore.FLAG_RECORDABLE);
-//        }
     }
 
     public void initRender(int width, int height, SurfaceView surfaceView, String mediaFormatType){
@@ -91,11 +86,6 @@ public class RenderTask {
             public void onPipeStart() {
 
                 Logger.i(TAG, "lidechen_test onPipeStart");
-
-//                initGLEnv();
-//                if(mOnRenderEventListener != null){
-//                    mOnRenderEventListener.onTaskPrepare();
-//                }
             }
 
             @Override
@@ -107,9 +97,7 @@ public class RenderTask {
 
                     Logger.d(TAG, "[onPipeRecv] MSG_RESUME_RENDER_TASK");
 
-                    //release();
                     initGLEnv();
-
                     mIsRenderEnvReady = true;
 
                     if(mOnRenderEventListener != null){
@@ -122,7 +110,6 @@ public class RenderTask {
                     Logger.d(TAG, "[onPipeRecv] MSG_PAUSE_RENDER_TASK");
 
                     mRenderSurfaceHolder.addCallback(mHolderCallback);
-                    //release();
                     releaseRender();
 
                 }else if(msg.currentMsg == CodecMsg.MSG.MSG_DECODE_FRAME_READY){
@@ -209,13 +196,8 @@ public class RenderTask {
 
     private void initGLEnv(){
 
-//        if(mEglCoreRec == null) {
-//            mEglCoreRec = new EglCore(null, EglCore.FLAG_RECORDABLE);
-//        }
-        //建立一个临时SurfaceTexture 用来创建egl环境
         if(mEglCore == null){
             mEglCore = new EglCore(null, EglCore.FLAG_RECORDABLE);
-
         }
 
         //初始化渲染窗口
@@ -238,15 +220,9 @@ public class RenderTask {
             //监听MediaCodec解码数据到 mDecodeSurfaceTexture
             //使用SurfaceTexture创建一个解码Surface
             mDecodeSurface = new Surface(mDecodeSurfaceTexture);
-//        //mDecodeSurface绑定为当前Egl环境的surface 此surface最终会给到MediaCodec 所以不要在外面用这个surface创建egl的surface
-//        mDecodeWindowSurface = new WindowSurface(mEglCore, mDecodeSurface, true);
 
             mDecodeWrapper = new DecodeWrapper();
             mDecodeWrapper.init(mWidth, mHeight, mDecodeSurface, mMediaFormatType);
-        }else {
-
-            //mDecodeSurfaceTexture.detachFromGLContext();
-            //mDecodeSurfaceTexture.attachToGLContext(mTextureId);
         }
     }
 
@@ -282,7 +258,6 @@ public class RenderTask {
         Logger.i(TAG, "lidechen_test decode="+str);
 
         return mDecodeWrapper.decode(input, offset, count, pts);
-        //return -1;
     }
 
     /**
@@ -296,23 +271,11 @@ public class RenderTask {
             mRendererWindowSurface.release();
             mRendererWindowSurface = null;
         }
-
-        //mEglCoreRec = new EglCore(mEglCore.getContext(), EglCore.FLAG_RECORDABLE);
-
-        //先释放渲染surface相关 再释放egl相关 否则再次使用渲染surface创建egl环境报错
-//        if(mEglCore != null){
-//            mEglCore.release();
-//            mEglCore = null;
-//        }
     }
 
     private void release(){
 
         mMsgQueue.clearPipeData();
-
-//        if(mRenderSurface != null){
-//            mRenderSurface.release();
-//        }
 
         if(mRendererWindowSurface != null){
             mRendererWindowSurface.release();
@@ -340,11 +303,6 @@ public class RenderTask {
             mEglCore = null;
         }
 
-        if(mEglCoreRec != null){
-            mEglCoreRec.release();
-            mEglCoreRec = null;
-        }
-
         if(mDecodeWrapper != null) {
             mDecodeWrapper.release();
             mDecodeWrapper = null;
@@ -368,8 +326,6 @@ public class RenderTask {
 
             mSurfaceWidth = mRenderSurfaceView.getMeasuredWidth();
             mSurfaceHeight = mRenderSurfaceView.getMeasuredHeight();
-
-            //initRender(mWidth, mHeight, mRenderSurfaceView, mMediaFormatType);
 
             CodecMsg msg = getResumeRenderMsg();
             mMsgQueue.addFirst(msg);
