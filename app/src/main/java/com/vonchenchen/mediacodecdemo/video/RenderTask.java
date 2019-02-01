@@ -1,6 +1,7 @@
 package com.vonchenchen.mediacodecdemo.video;
 
 import android.graphics.SurfaceTexture;
+import android.opengl.EGLContext;
 import android.opengl.GLES20;
 import android.view.Surface;
 import android.view.SurfaceHolder;
@@ -11,8 +12,6 @@ import com.vonchenchen.mediacodecdemo.video.egl.WindowSurface;
 import com.vonchenchen.mediacodecdemo.video.gles.FullFrameRect;
 import com.vonchenchen.mediacodecdemo.video.gles.Texture2dProgram;
 
-import java.util.Arrays;
-
 public class RenderTask {
 
     private static final String TAG = "RenderTask";
@@ -21,6 +20,7 @@ public class RenderTask {
 
     private DecodeWrapper mDecodeWrapper;
 
+    private EglCore mEglCoreRec = null;
     private EglCore mEglCore;
     /** 接收解码数据纹理 glGenTexture生成 */
     private int mTextureId;
@@ -53,7 +53,8 @@ public class RenderTask {
     private int mSurfaceWidth;
     private int mSurfaceHeight;
 
-    private boolean mIsGLEnvReady = false;
+    /** 渲染环境是否就绪 */
+    private boolean mIsRenderEnvReady = false;
 
     private OnRenderEventListener mOnRenderEventListener = null;
 
@@ -61,6 +62,10 @@ public class RenderTask {
 
         mMsgQueue = new MsgPipe();
         mHolderCallback = new HolderCallback();
+
+//        if(mEglCoreRec == null) {
+//            mEglCoreRec = new EglCore(null, EglCore.FLAG_RECORDABLE);
+//        }
     }
 
     public void initRender(int width, int height, SurfaceView surfaceView, String mediaFormatType){
@@ -102,37 +107,40 @@ public class RenderTask {
 
                     Logger.d(TAG, "[onPipeRecv] MSG_RESUME_RENDER_TASK");
 
-                    release();
+                    //release();
                     initGLEnv();
 
-                    mIsGLEnvReady = true;
+                    mIsRenderEnvReady = true;
 
                     if(mOnRenderEventListener != null){
                         mOnRenderEventListener.onTaskPrepare();
                     }
                 }else if(msg.currentMsg == CodecMsg.MSG.MSG_PAUSE_RENDER_TASK){
 
-                    mIsGLEnvReady = false;
+                    mIsRenderEnvReady = false;
 
                     Logger.d(TAG, "[onPipeRecv] MSG_PAUSE_RENDER_TASK");
 
                     mRenderSurfaceHolder.addCallback(mHolderCallback);
-                    release();
+                    //release();
+                    releaseRender();
+
                 }else if(msg.currentMsg == CodecMsg.MSG.MSG_DECODE_FRAME_READY){
 
                     Logger.d(TAG, "[onPipeRecv] MSG_DECODE_FRAME_READY");
 
-                    if(!mIsGLEnvReady){
+
+                    if(!mIsRenderEnvReady){
                         return;
                     }
 
                     //解码成功 开始渲染
-                    try {
+                    //try {
                         ret = renderToRenderSurface();
-                    }catch (Exception e){
-                        Logger.e(TAG, "lidechen_test onPipeRecv "+e.toString());
-                    }
-                    Logger.i(TAG, "lidechen_test renderToRenderSurface ret="+ret);
+                    //}catch (Exception e){
+                    //    Logger.e(TAG, "lidechen_test onPipeRecv "+e.toString());
+                    //}
+                    //Logger.i(TAG, "lidechen_test renderToRenderSurface ret="+ret);
                 }else if(msg.currentMsg == CodecMsg.MSG.MSG_STOP_RENDER_TASK){
 
                     Logger.d(TAG, "[onPipeRecv] MSG_STOP_RENDER_TASK");
@@ -201,32 +209,45 @@ public class RenderTask {
 
     private void initGLEnv(){
 
+//        if(mEglCoreRec == null) {
+//            mEglCoreRec = new EglCore(null, EglCore.FLAG_RECORDABLE);
+//        }
         //建立一个临时SurfaceTexture 用来创建egl环境
-        mEglCore = new EglCore(null, EglCore.FLAG_RECORDABLE);
+        if(mEglCore == null){
+            mEglCore = new EglCore(null, EglCore.FLAG_RECORDABLE);
+
+        }
+
         //初始化渲染窗口
         mRendererWindowSurface = new WindowSurface(mEglCore, mRenderSurface, false);
         mRendererWindowSurface.makeCurrent();
 
-        //drawer封装opengl
-        mEXTTexDrawer = new FullFrameRect(new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_EXT));
-        //绑定一个TEXTURE_2D纹理
-        mTextureId = mEXTTexDrawer.createTextureObject();
-        //创建一个SurfaceTexture用来接收MediaCodec的解码数据
-        mDecodeSurfaceTexture = new SurfaceTexture(mTextureId);
-        mDecodeSurfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
-            @Override
-            public void onFrameAvailable(SurfaceTexture surfaceTexture) {
-                Logger.i("lidechen_test", "onFrameAvailable");
-            }
-        });
-        //监听MediaCodec解码数据到 mDecodeSurfaceTexture
-        //使用SurfaceTexture创建一个解码Surface
-        mDecodeSurface = new Surface(mDecodeSurfaceTexture);
+        if(mEXTTexDrawer == null) {
+            //drawer封装opengl
+            mEXTTexDrawer = new FullFrameRect(new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_EXT));
+            //绑定一个TEXTURE_2D纹理
+            mTextureId = mEXTTexDrawer.createTextureObject();
+            //创建一个SurfaceTexture用来接收MediaCodec的解码数据
+            mDecodeSurfaceTexture = new SurfaceTexture(mTextureId);
+            mDecodeSurfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
+                @Override
+                public void onFrameAvailable(SurfaceTexture surfaceTexture) {
+                    Logger.i("lidechen_test", "onFrameAvailable");
+                }
+            });
+            //监听MediaCodec解码数据到 mDecodeSurfaceTexture
+            //使用SurfaceTexture创建一个解码Surface
+            mDecodeSurface = new Surface(mDecodeSurfaceTexture);
 //        //mDecodeSurface绑定为当前Egl环境的surface 此surface最终会给到MediaCodec 所以不要在外面用这个surface创建egl的surface
 //        mDecodeWindowSurface = new WindowSurface(mEglCore, mDecodeSurface, true);
 
-        mDecodeWrapper = new DecodeWrapper();
-        mDecodeWrapper.init(mWidth, mHeight, mDecodeSurface, mMediaFormatType);
+            mDecodeWrapper = new DecodeWrapper();
+            mDecodeWrapper.init(mWidth, mHeight, mDecodeSurface, mMediaFormatType);
+        }else {
+
+            //mDecodeSurfaceTexture.detachFromGLContext();
+            //mDecodeSurfaceTexture.attachToGLContext(mTextureId);
+        }
     }
 
     /**
@@ -252,19 +273,37 @@ public class RenderTask {
     }
 
     public int decode(byte[] input, int offset, int count , long pts){
-        if(!mIsGLEnvReady){
-            return -1000;
-        }
 
         byte[] data = new byte[6];
         for(int i=0; i<6; i++){
             data[i] = input[i];
         }
-        String str = Arrays.toString(data);
+        String str = Utils.byteArrayToHexString(data);
         Logger.i(TAG, "lidechen_test decode="+str);
 
         return mDecodeWrapper.decode(input, offset, count, pts);
         //return -1;
+    }
+
+    /**
+     * 只释放绘制相关 不释放解码相关
+     */
+    private void releaseRender(){
+
+        mMsgQueue.clearPipeData();
+
+        if(mRendererWindowSurface != null){
+            mRendererWindowSurface.release();
+            mRendererWindowSurface = null;
+        }
+
+        //mEglCoreRec = new EglCore(mEglCore.getContext(), EglCore.FLAG_RECORDABLE);
+
+        //先释放渲染surface相关 再释放egl相关 否则再次使用渲染surface创建egl环境报错
+//        if(mEglCore != null){
+//            mEglCore.release();
+//            mEglCore = null;
+//        }
     }
 
     private void release(){
@@ -299,6 +338,11 @@ public class RenderTask {
         if(mEglCore != null){
             mEglCore.release();
             mEglCore = null;
+        }
+
+        if(mEglCoreRec != null){
+            mEglCoreRec.release();
+            mEglCoreRec = null;
         }
 
         if(mDecodeWrapper != null) {

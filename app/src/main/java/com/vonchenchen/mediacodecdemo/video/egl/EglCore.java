@@ -350,6 +350,14 @@ public final class EglCore {
     }
 
     /**
+     * 获取当前EGLContext
+     * @return
+     */
+    public EGLContext getContext(){
+        return mEGLContext;
+    }
+
+    /**
      * Writes the current display, context, and surface to the log.
      */
     public static void logCurrent(String msg) {
