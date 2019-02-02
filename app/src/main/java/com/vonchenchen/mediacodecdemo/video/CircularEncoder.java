@@ -84,8 +84,7 @@ public class CircularEncoder {
     }
 
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-    public CircularEncoder(int width, int height, int frameRate , String mimeType, boolean hd)
-            throws IOException {
+    public CircularEncoder(int width, int height, int frameRate , String mimeType, boolean hd) {
         mHDBuffer = hd;
         // The goal is to size the buffer so that we can accumulate N seconds worth of video,
         // where N is passed in as "desiredSpanSec".  If the codec generates data at roughly

@@ -2,30 +2,27 @@ package com.vonchenchen.mediacodecdemo.video;
 
 import android.graphics.SurfaceTexture;
 import android.graphics.SurfaceTexture.OnFrameAvailableListener;
+import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
-import android.os.Handler;
-import android.os.HandlerThread;
-import android.os.Message;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 
 import com.vonchenchen.mediacodecdemo.video.egl.EglCore;
 import com.vonchenchen.mediacodecdemo.video.egl.WindowSurface;
 import com.vonchenchen.mediacodecdemo.video.gles.FullFrameRect;
 import com.vonchenchen.mediacodecdemo.video.gles.Texture2dProgram;
 
-import java.io.IOException;
-
-public class EncodeTask extends HandlerThread implements OnFrameAvailableListener, SurfaceHolder.Callback{
+public class EncodeTask {
 
 	static private final String TAG = "EncodeTask";
 	static private final int MSG_FRAME_AVAILABLE = 1;
 	static private final int MSG_FINISH = 2;
 
-	private MainHandler mHandler;
+	private MsgPipe<CodecMsg> mMsgQueue;
 
 	/** 接收相机纹理 glGenTexture生成 */
 	private int mTextureId;
@@ -36,8 +33,11 @@ public class EncodeTask extends HandlerThread implements OnFrameAvailableListene
     private FullFrameRect mInternalTexDrawer;
 
     /** 外部画布传入的surface 作为egl环境的窗口 切换egl环境 会渲染到不同的窗口 */
-	private Surface mSurface;
-	private boolean mSurfaceReady ;
+    private SurfaceView mRenderSurfaceView;
+	private Surface mRenderSurface;
+
+	private int mSurfaceWidth;
+	private int mSurfaceHeight;
 
     /** 相机矩阵 由当前相机纹理生成的SurfaceTexture获取 */
     private final float[] mCameraMVPMatrix = new float[16];
@@ -50,26 +50,27 @@ public class EncodeTask extends HandlerThread implements OnFrameAvailableListene
     private int mCaptureWidth;
     private int mCaptureHeight;
 
-    private int mDisplayViewWidth;
-    private int mDisplayViewHeight;
-
 	private int mFrameRate;
-
-	private int count = 0;
 
 	private EglCore mEglCore;
 	/** 非高清编码surface Surface通过MediaCodec的createInputSurface创建 每个surface维护一个egl句柄
 	 *  渲染后相当于直接将数据传递给MediaCodec*/
-	private WindowSurface mEncoderSurface;
-	private WindowSurface mHDEncoderSurface;
+	private WindowSurface mEncodeWindowSurface;
+	private WindowSurface mHDEncodeWindowSurface;
 	/** 渲染surface 由外部需要渲染的画布传入 */
-	private WindowSurface mDisplaySurface;
+	private WindowSurface mRenderWindowSurface;
 
-	private CircularEncoder mEncoder;
+	private CircularEncoder mSimpleEncoder;
 	private CircularEncoder mHDEncoder;
 
 	private SurfaceHolder mSurfaceHolder;
 	private int mFrameCount = 0;
+
+	/** 渲染surface的holder */
+	private HolderCallback mHolderCallback;
+
+	private CircularEncoder.OnCricularEncoderEventListener mOnCricularEncoderEventListener;
+	private OnEncodeTaskEventListener mOnEncodeTaskEventListener;
 
 	private float[] mBaseScaleVertexBuf = {
 			// 0 bottom left
@@ -82,136 +83,132 @@ public class EncodeTask extends HandlerThread implements OnFrameAvailableListene
 			1.0f,  1.0f,
 	};
 
-	@Override
-	public void surfaceCreated(SurfaceHolder holder) {
-		mSurface = holder.getSurface();
-		mSurfaceReady = true;
-	}
+	public EncodeTask(SurfaceView surfaceView , int width , int height, int frameRate, CircularEncoder.OnCricularEncoderEventListener listener) {
 
-	@Override
-	public void surfaceChanged(SurfaceHolder surfaceHolder, int format, int width, int height) {
-		mSurfaceReady = false;
-		surfaceHolder.addCallback(this);
-		mSurface = surfaceHolder.getSurface();
-		mSurfaceReady = true;
-	}
+		mMsgQueue = new MsgPipe<>();
 
-	@Override
-	public void surfaceDestroyed(SurfaceHolder holder) {
-		mSurfaceReady = false;
-		holder.removeCallback(this);
-	}
+		mRenderSurfaceView = surfaceView;
+		mSurfaceHolder = mRenderSurfaceView.getHolder();
+		mHolderCallback = new HolderCallback();
+		mSurfaceHolder.addCallback(mHolderCallback);
 
-	public class MainHandler extends Handler {
+		mRenderSurface = mSurfaceHolder.getSurface();
 
-		public MainHandler() {
-			super(EncodeTask.this.getLooper());
-		}
-
-        @Override
-        public void handleMessage(Message msg) {
-			switch (msg.what) {
-			case MSG_FRAME_AVAILABLE:
-				frameAvailableInThread();
-				break;
-			case MSG_FINISH:
-				finishInThread();
-				break;
-			default:
-				break;
-			}
-        }
-	}
-
-	public EncodeTask(SurfaceHolder surfaceHolder , int width , int height, int displayViewWidth, int displayViewHeight, int frameRate, CircularEncoder.OnCricularEncoderEventListener listener) {
-		super("EncodeTask");
-
-		mSurfaceHolder = surfaceHolder;
-		mSurfaceHolder.addCallback(this);
-		mSurface = mSurfaceHolder.getSurface();
-		mSurfaceReady = mSurface.isValid();
 		mCaptureWidth = width;
 		mCaptureHeight = height;
-		mDisplayViewWidth = displayViewWidth;
-		mDisplayViewHeight = displayViewHeight;
+
+		if(mRenderSurface.isValid()) {
+			mSurfaceWidth = mRenderSurfaceView.getMeasuredWidth();
+			mSurfaceHeight = mRenderSurfaceView.getMeasuredHeight();
+		}
+
 		mFrameRate = frameRate;
+
+		mOnCricularEncoderEventListener = listener;
+	}
+
+	public void startEncodeTask(){
+
+		mMsgQueue.setOnPipeListener(new MsgPipe.OnPipeListener<CodecMsg>() {
+			@Override
+			public void onPipeStart() {
+
+				initMats();
+			}
+
+			@Override
+			public void onPipeRecv(CodecMsg msg) {
+
+				if(msg.currentMsg == CodecMsg.MSG.MSG_ENCODE_CAPTURE_FRAME_READY){
+
+					renderAndEncode();
+				}else if(msg.currentMsg == CodecMsg.MSG.MSG_ENCODE_RESUME_RENDER){
+
+					initGL();
+				}else if(msg.currentMsg == CodecMsg.MSG.MSG_ENCODE_PAUSE_RENDER){
+
+					releaseRender();
+				}else if(msg.currentMsg == CodecMsg.MSG.MSG_ENCODE_STOP_TASK){
+
+					//停止解码任务
+					mMsgQueue.stopPipe();
+					//发一条空消息 避免线程等待
+					CodecMsg msgEmpty = new CodecMsg();
+					mMsgQueue.addFirst(msgEmpty);
+				}
+			}
+
+			@Override
+			public void onPipeRelease() {
+
+				release();
+			}
+		});
+
+		mMsgQueue.clearPipeData();
+		pushCodecMsgFirst(CodecMsg.MSG.MSG_ENCODE_RESUME_RENDER);
+		mMsgQueue.startPipe();
+	}
+
+	public void stopEncodeTask(){
+
+		pushCodecMsgFirst(CodecMsg.MSG.MSG_ENCODE_STOP_TASK);
+	}
+
+	private void initMats(){
 
 		Matrix.setIdentityM(mEncodeTextureMatrix, 0);
 		Matrix.translateM(mEncodeTextureMatrix, 0, 0.5f, 0.5f, 0);
 		// 左右镜像编码后视频 flip
 		Matrix.rotateM(mEncodeTextureMatrix, 0, 180, 0, 1, 0);
 		Matrix.translateM(mEncodeTextureMatrix, 0, -0.5f, -0.5f, 0);
-
-		initEncoder(listener);
-	}
-
-	private void initEncoder(CircularEncoder.OnCricularEncoderEventListener listener){
-		try {
-			mEncoder = new CircularEncoder(mCaptureWidth , mCaptureHeight , mFrameRate, MediaFormat.MIMETYPE_VIDEO_AVC,true);
-			mEncoder.setOnCricularEncoderEventListener(listener);
-		} catch (IOException e) {
-			Logger.printErrStackTrace(TAG, e, "initEncoder");
-		}
-	}
-
-	void initEncoderSurface() {
-		if (mEglCore != null) {
-			if (mEncoder != null) {
-				//getInputSurface()最终获取的是MediaCodec调用createInputSurface()方法创建的Surface
-				//这个Surface传入当前egl环境 作为egl的窗口参数(win) 通过eglCreateWindowSurface与egldisplay进行关联
-				mEncoderSurface = new WindowSurface(mEglCore, mEncoder.getInputSurface(), true);
-			}
-			if (mHDEncoder != null) {
-				mHDEncoderSurface = new WindowSurface(mEglCore, mHDEncoder.getInputSurface(), true);
-			}
-		}
-	}
-
-	@Override
-	public synchronized void start() {
-		super.start();
-		mHandler = new MainHandler();
-	}
-
-	@Override
-	public void run() {
-
-		initGL();
-
-		initEncoderSurface();
-		super.run();
-
-		if (mDisplaySurface != null) {
-			Logger.e(TAG , "[EncodeTask]mDisplaySurface release");
-			mDisplaySurface.release();
-			mDisplaySurface = null;
-		}
-
-		if (mEglCore != null) {
-			Logger.e(TAG , "[EncodeTask]mEglCore release");
-			mEglCore.release();
-			mEglCore = null;
-		}
 	}
 
 	private void initGL() {
 
-		//创建egl环境
-		mEglCore = new EglCore(null, EglCore.FLAG_RECORDABLE);
-		//封装egl与对应的surface
-		mDisplaySurface = new WindowSurface(mEglCore, mSurface , false);
-		mDisplaySurface.makeCurrent();
+		if(mEglCore == null) {
+			//创建egl环境
+			mEglCore = new EglCore(null, EglCore.FLAG_RECORDABLE);
+		}
 
-		//drawer封装opengl program相关
-        mInternalTexDrawer = new FullFrameRect(new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_EXT));
-		//mInternalTexDrawer = new FullFrameRect(new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_EXT_BW));
-		//mInternalTexDrawer = new FullFrameRect(new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_EXT_FILT));
-		//绑定一个纹理 根据TEXTURE_EXT 内部绑定一个相机纹理
-        mTextureId = mInternalTexDrawer.createTextureObject();
-        //使用纹理创建SurfaceTexture 用来接收相机数据
-        mCameraTexture = new SurfaceTexture(mTextureId);
-        //监听接收数据
-        mCameraTexture.setOnFrameAvailableListener(this);
+		//封装egl与对应的surface
+		mRenderWindowSurface = new WindowSurface(mEglCore, mRenderSurface, false);
+		mRenderWindowSurface.makeCurrent();
+
+		if(mInternalTexDrawer == null) {
+			//drawer封装opengl program相关
+			mInternalTexDrawer = new FullFrameRect(new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_EXT));
+			//mInternalTexDrawer = new FullFrameRect(new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_EXT_BW));
+			//mInternalTexDrawer = new FullFrameRect(new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_EXT_FILT));
+			//绑定一个纹理 根据TEXTURE_EXT 内部绑定一个相机纹理
+			mTextureId = mInternalTexDrawer.createTextureObject();
+			//使用纹理创建SurfaceTexture 用来接收相机数据
+			mCameraTexture = new SurfaceTexture(mTextureId);
+			//监听接收数据
+			mCameraTexture.setOnFrameAvailableListener(new OnFrameAvailableListener() {
+				@Override
+				public void onFrameAvailable(SurfaceTexture surfaceTexture) {
+					//相机采集到一帧画面
+					CodecMsg codecMsg = new CodecMsg();
+					codecMsg.currentMsg = CodecMsg.MSG.MSG_ENCODE_CAPTURE_FRAME_READY;
+					mMsgQueue.addLast(codecMsg);
+				}
+			});
+
+			if(mOnEncodeTaskEventListener != null){
+				mOnEncodeTaskEventListener.onCameraTextureReady(mCameraTexture);
+			}
+
+			mSimpleEncoder = new CircularEncoder(mCaptureWidth, mCaptureHeight, mFrameRate, MediaFormat.MIMETYPE_VIDEO_AVC, true);
+			mSimpleEncoder.setOnCricularEncoderEventListener(mOnCricularEncoderEventListener);
+			//getInputSurface()最终获取的是MediaCodec调用createInputSurface()方法创建的Surface
+			//这个Surface传入当前egl环境 作为egl的窗口参数(win) 通过eglCreateWindowSurface与egldisplay进行关联
+			mEncodeWindowSurface = new WindowSurface(mEglCore, mSimpleEncoder.getInputSurface(), true);
+
+			if (mHDEncoder != null) {
+				mHDEncodeWindowSurface = new WindowSurface(mEglCore, mHDEncoder.getInputSurface(), true);
+			}
+		}
 	}
 
 	/**
@@ -222,81 +219,40 @@ public class EncodeTask extends HandlerThread implements OnFrameAvailableListene
 		return mCameraTexture;
 	}
 
-	@Override
-	public void onFrameAvailable(SurfaceTexture surfaceTexture) {
-
-		frameAvailable();
-	}
-
-	private void frameAvailable() {
-		if (isAlive() && mSurfaceReady) {
-			try {
-				mHandler.sendEmptyMessage(MSG_FRAME_AVAILABLE);
-			} catch (Exception e) {
-				Logger.printErrStackTrace(TAG , e , "getException on frameAvailable");
-			}
-
-		}
-	}
-
 	/** 丢帧计数器 */
 	private int mFrameSkipCnt = 0;
 
-	private void frameAvailableInThread() {
+	private void renderAndEncode() {
         //Log.d(TAG, "drawFrame");
         if (mEglCore == null) {
             Log.d(TAG, "Skipping drawFrame after shutdown");
             return;
         }
 
+		mCameraTexture.updateTexImage();
+
         /********* draw to Capture Window **********/
         // Latch the next frame from the camera.
-		mDisplaySurface.makeCurrent();
+		if(mRenderWindowSurface != null) {
+			mRenderWindowSurface.makeCurrent();
 
-		//用于接收相机预览纹理id的SurfaceTexture
-		//updateTexImage()方法在OpenGLES环境调用 将数据绑定给OpenGLES对应的纹理对象GL_OES_EGL_image_external 对应shader中samplerExternalOES
-		//updateTexImage 完毕后接收下一帧
-		//由于在OpenGL ES中，上传纹理（glTexImage2D(), glSubTexImage2D()）是一个极为耗时的过程，在1080×1920的屏幕尺寸下传一张全屏的texture需要20～60ms。这样的话SurfaceFlinger就不可能在60fps下运行。
-		//因此， Android采用了image native buffer,将graphic buffer直接作为纹理（direct texture）进行操作
+			//用于接收相机预览纹理id的SurfaceTexture
+			//updateTexImage()方法在OpenGLES环境调用 将数据绑定给OpenGLES对应的纹理对象GL_OES_EGL_image_external 对应shader中samplerExternalOES
+			//updateTexImage 完毕后接收下一帧
+			//由于在OpenGL ES中，上传纹理（glTexImage2D(), glSubTexImage2D()）是一个极为耗时的过程，在1080×1920的屏幕尺寸下传一张全屏的texture需要20～60ms。这样的话SurfaceFlinger就不可能在60fps下运行。
+			//因此， Android采用了image native buffer,将graphic buffer直接作为纹理（direct texture）进行操作
 
-        mCameraTexture.updateTexImage();
-        mCameraTexture.getTransformMatrix(mCameraMVPMatrix);
-		//显示图像全部 glViewport 传入当前控件的宽高
-		GLES20.glViewport(0, 0, mDisplayViewWidth, mDisplayViewHeight);
+			mCameraTexture.getTransformMatrix(mCameraMVPMatrix);
+			//显示图像全部 glViewport 传入当前控件的宽高
+			GLES20.glViewport(0, 0, mSurfaceWidth, mSurfaceHeight);
 
-		//通过修改顶点坐标 将采集到的视频按比例缩放到窗口中
-		ScaleUtils.Param param = ScaleUtils.getScale(mDisplayViewWidth, mDisplayViewHeight, mCaptureWidth, mCaptureHeight);
-		float[] drawMatrix = new float[8];
-		float scaleWidth = ((float) param.width)/mDisplayViewWidth;
-		float scaleHeight = ((float) param.height)/mDisplayViewHeight;
-		if(scaleWidth == 1){
-			float halfHeight = scaleHeight;
-			drawMatrix[0] = -1;
-			drawMatrix[1] = -halfHeight;
-			drawMatrix[2] = 1;
-			drawMatrix[3] = -halfHeight;
-			drawMatrix[4] = -1;
-			drawMatrix[5] = halfHeight;
-			drawMatrix[6] = 1;
-			drawMatrix[7] = halfHeight;
-		}else{
-			float halfWidth = scaleWidth;
-			drawMatrix[0] = -halfWidth;
-			drawMatrix[1] = -1;
-			drawMatrix[2] = halfWidth;
-			drawMatrix[3] = -1;
-			drawMatrix[4] = -halfWidth;
-			drawMatrix[5] = 1;
-			drawMatrix[6] = halfWidth;
-			drawMatrix[7] = 1;
+			//通过修改顶点坐标 将采集到的视频按比例缩放到窗口中
+			float[] drawVertexMat = ScaleUtils.getScaleVertexMat(mSurfaceWidth, mSurfaceHeight, mCaptureWidth, mCaptureHeight);
+			mInternalTexDrawer.rescaleDrawRect(drawVertexMat);
+			mInternalTexDrawer.drawFrame(mTextureId, mCameraMVPMatrix);
+
+			mRenderWindowSurface.swapBuffers();
 		}
-		mInternalTexDrawer.rescaleDrawRect(drawMatrix);
-		mInternalTexDrawer.drawFrame(mTextureId, mCameraMVPMatrix);
-
-		mDisplaySurface.swapBuffers();
-
-		//Logger.i("lidechen_test", "test1 scaleWidth="+scaleWidth+" scaleHeight="+scaleHeight);
-		//mDisplaySurface.readImageTest();
 
 		mFrameCount ++;
 
@@ -306,13 +262,12 @@ public class EncodeTask extends HandlerThread implements OnFrameAvailableListene
 //			return;
 //		}
 
-		/********* draw to HD encoder **********/
 		if(mHDEncoder != null) {
-			if(mFrameCount == 1 /*|| mFrameCount%10 == 0*/) {
+			if(mFrameCount == 1) {
 				mHDEncoder.requestKeyFrame();
 			}
 
-			mHDEncoderSurface.makeCurrent();
+			mHDEncodeWindowSurface.makeCurrent();
 			// 给编码器显示的区域
 			GLES20.glViewport(0, 0, mHDEncoder.getWidth() , mHDEncoder.getHeight());
 			// 如果是横屏 不需要设置
@@ -322,23 +277,19 @@ public class EncodeTask extends HandlerThread implements OnFrameAvailableListene
 			// 下面往编码器绘制数据
 			mInternalTexDrawer.drawFrame(mTextureId, mEncodeHDMatrix);
 			mHDEncoder.frameAvailableSoon();
-			mHDEncoderSurface.setPresentationTime(mCameraTexture.getTimestamp());
-			mHDEncoderSurface.swapBuffers();
-
-			Logger.i("lidechen_test", "test2");
-			//mHDEncoderSurface.readImageTest();
+			mHDEncodeWindowSurface.setPresentationTime(mCameraTexture.getTimestamp());
+			mHDEncodeWindowSurface.swapBuffers();
 		}
 
-		/********* draw to mix encoder **********/
-		if(mEncoder != null) {
+		if(mSimpleEncoder != null) {
 			if(mFrameCount == 1 /*|| mFrameCount%10 == 0*/) {
-				mEncoder.requestKeyFrame();
+				mSimpleEncoder.requestKeyFrame();
 			}
 
 			// 切到当前egl环境
-			mEncoderSurface.makeCurrent();
+			mEncodeWindowSurface.makeCurrent();
 			// 给编码器显示的区域
-			GLES20.glViewport(0, 0, mEncoder.getWidth() , mEncoder.getHeight());
+			GLES20.glViewport(0, 0, mSimpleEncoder.getWidth() , mSimpleEncoder.getHeight());
 			// 如果是横屏 不需要设置
 			Matrix.multiplyMM(mEncodeMatrix, 0, mCameraMVPMatrix, 0, mEncodeTextureMatrix, 0);
 			// 恢复为基本scale
@@ -347,78 +298,117 @@ public class EncodeTask extends HandlerThread implements OnFrameAvailableListene
 			// 也就是说这一步其实是往编码器MediaCodec中放入了数据
 			mInternalTexDrawer.drawFrame(mTextureId, mEncodeMatrix);
 			//通知从MediaCodec中读取编码完毕的数据
-			mEncoder.frameAvailableSoon();
-			mEncoderSurface.setPresentationTime(mCameraTexture.getTimestamp());
-			mEncoderSurface.swapBuffers();
+			mSimpleEncoder.frameAvailableSoon();
+			mEncodeWindowSurface.setPresentationTime(mCameraTexture.getTimestamp());
+			mEncodeWindowSurface.swapBuffers();
 
 			Logger.i("lidechen_test", "test3");
-			//mEncoderSurface.readImageTest();
+			//mEncodeWindowSurface.readImageTest();
 		}
-
 	}
 
-    public void finish() {
-		Logger.v(TAG , "finish");
-    	mHandler.sendEmptyMessage(MSG_FINISH);
-    	try {
-			join();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-    }
+	private void releaseRender(){
 
-    private void finishInThread() {
-		Logger.v(TAG , "finishInThread");
-        if (mCameraTexture != null) {
-            mCameraTexture.release();
-            mCameraTexture = null;
-        }
-    	if (mInternalTexDrawer != null) {
-    		mInternalTexDrawer.release(true);
-    		mInternalTexDrawer = null;
-    	}
-    	quit();
-    }
+		mMsgQueue.clearPipeData();
+
+		if(mRenderWindowSurface != null){
+			mRenderWindowSurface.release();
+			mRenderWindowSurface = null;
+		}
+	}
+
+	private void pushCodecMsgLast(CodecMsg.MSG msg){
+
+		CodecMsg codecMsg = new CodecMsg();
+		codecMsg.currentMsg = msg;
+		mMsgQueue.addLast(codecMsg);
+	}
+
+	private void pushCodecMsgFirst(CodecMsg.MSG msg){
+
+		CodecMsg codecMsg = new CodecMsg();
+		codecMsg.currentMsg = msg;
+		mMsgQueue.addFirst(codecMsg);
+	}
 
     public void release(){
-
-		this.finish();
 
 		if (mHDEncoder != null) {
 			mHDEncoder.shutdown();
 			mHDEncoder = null;
 		}
 
-		if(mEncoder != null){
-			mEncoder.shutdown();
-			mEncoder = null;
+		if(mSimpleEncoder != null){
+			mSimpleEncoder.shutdown();
+			mSimpleEncoder = null;
 		}
 
-		if (mHDEncoderSurface != null) {
-			mHDEncoderSurface.release();
-			mHDEncoderSurface = null;
+		if (mHDEncodeWindowSurface != null) {
+			mHDEncodeWindowSurface.release();
+			mHDEncodeWindowSurface = null;
 		}
 
-		if (mEncoderSurface != null) {
-			mEncoderSurface.release();
-			mEncoderSurface = null;
+		if (mEncodeWindowSurface != null) {
+			mEncodeWindowSurface.release();
+			mEncodeWindowSurface = null;
 		}
 
-		if (mDisplaySurface != null) {
-			Logger.d(TAG , "mDisplaySurface release");
-			mDisplaySurface.release();
-			mDisplaySurface = null;
+		if (mRenderWindowSurface != null) {
+			mRenderWindowSurface.release();
+			mRenderWindowSurface = null;
+		}
+
+		if (mInternalTexDrawer != null) {
+			mInternalTexDrawer.release(true);
+			mInternalTexDrawer = null;
 		}
 
 		if (mEglCore != null) {
-			Logger.d(TAG , "mEglCore release");
 			mEglCore.release();
 			mEglCore = null;
 		}
 
-		if(mSurfaceHolder != null){
-			Logger.d(TAG , "mSurfaceHolder removecallback");
-			mSurfaceHolder.removeCallback(this);
+		if (mCameraTexture != null) {
+			mCameraTexture.release();
+			mCameraTexture = null;
 		}
+
+		if(mSurfaceHolder != null){
+			mSurfaceHolder.removeCallback(mHolderCallback);
+		}
+	}
+
+	class HolderCallback implements SurfaceHolder.Callback{
+
+		@Override
+		public void surfaceCreated(SurfaceHolder surfaceHolder) {
+
+			mRenderSurface = surfaceHolder.getSurface();
+			mSurfaceWidth = mRenderSurfaceView.getMeasuredWidth();
+			mSurfaceHeight = mRenderSurfaceView.getMeasuredHeight();
+
+			pushCodecMsgFirst(CodecMsg.MSG.MSG_ENCODE_RESUME_RENDER);
+		}
+
+		@Override
+		public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {
+
+			mSurfaceWidth = mRenderSurfaceView.getMeasuredWidth();
+			mSurfaceHeight = mRenderSurfaceView.getMeasuredHeight();
+		}
+
+		@Override
+		public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
+
+			pushCodecMsgFirst(CodecMsg.MSG.MSG_ENCODE_PAUSE_RENDER);
+		}
+	}
+
+	public void setOnEncodeTaskEventListener(OnEncodeTaskEventListener onEncodeTaskEventListener){
+		mOnEncodeTaskEventListener = onEncodeTaskEventListener;
+	}
+
+	public interface OnEncodeTaskEventListener{
+		void onCameraTextureReady(SurfaceTexture camSurfaceTexture);
 	}
 }

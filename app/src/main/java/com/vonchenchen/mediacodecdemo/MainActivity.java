@@ -55,125 +55,128 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mCamSurfaceView = findViewById(R.id.sv_cam);
-        mCamBtn = findViewById(R.id.btn_cam);
-        mEncBtn = findViewById(R.id.btn_enc);
-        mPlayBtn = findViewById(R.id.btn_play);
-        mVp8PlaySurfaceView = findViewById(R.id.sv_playvp8);
-        mPlayVp8Btn = findViewById(R.id.btn_playvp8);
-        mPlaySurfaceView = findViewById(R.id.sv_play);
-        mEncodeFrameRateText = findViewById(R.id.tv_encode_framerate);
-        mTestBtn = findViewById(R.id.btn_test);
-
-        mCameraIndex = 0;
-
-        //编码设置
-        mVideoEncodeProcessor = new VideoEncodeProcessor("/sdcard/test.h264");
-        mVideoEncodeProcessor.setOnVideoEncodeEventListener(new VideoEncodeProcessor.OnVideoEncodeEventListener() {
-            @Override
-            public void onFrameRate(final int frameRate) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        mEncodeFrameRateText.setText("framerate="+frameRate);
-                    }
-                });
-
-            }
-        });
-
-        //设置解码文件avc
-        String inputPathAvc = "/sdcard/test.h264";
-        mH264VideoDecodeProcessor = new VideoDecodeProcessor(mCamSurfaceView, inputPathAvc, MediaFormat.MIMETYPE_VIDEO_AVC);
-
-        //设置解码文件vp8
-        String inputPathVp8 = "/sdcard/out.vp8";
-        //mVp8VideoDecodeProcessor = new VideoDecodeProcessor(mVp8PlaySurfaceView, inputPathVp8, MediaFormat.MIMETYPE_VIDEO_VP8);
-
-        mH264VideoDecodeProcessor.setOnVideoDecodeEventListener(new VideoDecodeProcessor.OnVideoDecodeEventListener() {
-            @Override
-            public void onDecodeFinish() {
-                mIsStartPlay = false;
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        mH264VideoDecodeProcessor.release();
-                        mPlayBtn.setText("PLAY");
-                    }
-                });
-            }
-        });
-
-        mCamBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-
-                SurfaceHolder surfaceholder = mCamSurfaceView.getHolder();
-
-                if(!CameraManager.getInstance().isCamStart()) {
-                    //camera直接渲染
-                    CameraManager.getInstance().startCapture(surfaceholder);
-                    mCamBtn.setText("cam stop");
-                }else{
-                    CameraManager.getInstance().stopPreview();
-
-                    //Surface surface = surfaceholder.getSurface();
-                    //surface.release();
-
-
-                    mCamBtn.setText("cam start");
-                }
-            }
-        });
-
-        mEncBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if(!CameraManager.getInstance().isCamStart()) {
-
-                    CameraManager.CamSizeDetailInfo info = CameraManager.getInstance().getCamSize(mCurrentSize);
-                    mCaptureWidth = info.width;
-                    mCaptureHeight = info.height;
-                    mDisplayViewWidth = mCamSurfaceView.getWidth();
-                    mDisplayViewHeight = mCamSurfaceView.getHeight();
-
-                    //获取相机渲染surface
-                    SurfaceHolder surfaceholder = mCamSurfaceView.getHolder();
-                    //开始编码
-                    mVideoEncodeProcessor.startEncode(surfaceholder, mCaptureWidth, mCaptureHeight, mDisplayViewWidth, mDisplayViewHeight, mFps);
-                    //编码线程创建一个纹理id 包装为SurfaceTexture 用作相机渲染
-                    SurfaceTexture surfaceTexture = mVideoEncodeProcessor.getCameraTexture();
-                    //相机开启 渲染到上述surfaceTexture
-                    CameraManager.getInstance().startCapture(surfaceTexture);
-
-                    mEncBtn.setText("enc stop");
-                }else{
-                    CameraManager.getInstance().stopPreview();
-                    mVideoEncodeProcessor.stopCapture();
-
-                    mEncBtn.setText("enc start");
-                }
-            }
-        });
-
-        mPlayBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if(mIsStartPlay){
-                    mH264VideoDecodeProcessor.release();
-                    mPlayBtn.setText("PLAY");
-                }else {
-
-                    CameraManager.CamSizeDetailInfo info = CameraManager.getInstance().getCamSize(mCurrentSize);
-                    mCaptureWidth = info.width;
-                    mCaptureHeight = info.height;
-
-                    mH264VideoDecodeProcessor.startPlay(mCaptureWidth, mCaptureHeight);
-                    mPlayBtn.setText("STOP");
-                }
-                mIsStartPlay = !mIsStartPlay;
-            }
-        });
+//        mCamSurfaceView = findViewById(R.id.sv_cam);
+//        mCamBtn = findViewById(R.id.btn_cam);
+//        mEncBtn = findViewById(R.id.btn_enc);
+//        mPlayBtn = findViewById(R.id.btn_play);
+//        mVp8PlaySurfaceView = findViewById(R.id.sv_playvp8);
+//        mPlayVp8Btn = findViewById(R.id.btn_playvp8);
+//        mPlaySurfaceView = findViewById(R.id.sv_play);
+//        mEncodeFrameRateText = findViewById(R.id.tv_encode_framerate);
+//        mTestBtn = findViewById(R.id.btn_test);
+//
+//        mCameraIndex = 0;
+//
+//        //编码设置
+//        mVideoEncodeProcessor = new VideoEncodeProcessor("/sdcard/test.h264");
+//        mVideoEncodeProcessor.setOnVideoEncodeEventListener(new VideoEncodeProcessor.OnVideoEncodeEventListener() {
+//            @Override
+//            public void onFrameRate(final int frameRate) {
+//                runOnUiThread(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        mEncodeFrameRateText.setText("framerate="+frameRate);
+//                    }
+//                });
+//
+//            }
+//
+//            @Override
+//            public void onCameraTextureReady(SurfaceTexture camSurfaceTexture) {
+//
+//            }
+//        });
+//
+//        //设置解码文件avc
+//        String inputPathAvc = "/sdcard/test.h264";
+//        mH264VideoDecodeProcessor = new VideoDecodeProcessor(mCamSurfaceView, inputPathAvc, MediaFormat.MIMETYPE_VIDEO_AVC);
+//
+//        //设置解码文件vp8
+//        String inputPathVp8 = "/sdcard/out.vp8";
+//        //mVp8VideoDecodeProcessor = new VideoDecodeProcessor(mVp8PlaySurfaceView, inputPathVp8, MediaFormat.MIMETYPE_VIDEO_VP8);
+//
+//        mH264VideoDecodeProcessor.setOnVideoDecodeEventListener(new VideoDecodeProcessor.OnVideoDecodeEventListener() {
+//            @Override
+//            public void onDecodeFinish() {
+//                mIsStartPlay = false;
+//                runOnUiThread(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        mH264VideoDecodeProcessor.release();
+//                        mPlayBtn.setText("PLAY");
+//                    }
+//                });
+//            }
+//        });
+//
+//        mCamBtn.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//
+//                SurfaceHolder surfaceholder = mCamSurfaceView.getHolder();
+//
+//                if(!CameraManager.getInstance().isCamStart()) {
+//                    //camera直接渲染
+//                    CameraManager.getInstance().startCapture(surfaceholder);
+//                    mCamBtn.setText("cam stop");
+//                }else{
+//                    CameraManager.getInstance().stopPreview();
+//
+//                    //Surface surface = surfaceholder.getSurface();
+//                    //surface.release();
+//
+//
+//                    mCamBtn.setText("cam start");
+//                }
+//            }
+//        });
+//
+//        mEncBtn.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                if(!CameraManager.getInstance().isCamStart()) {
+//
+//                    CameraManager.CamSizeDetailInfo info = CameraManager.getInstance().getCamSize(mCurrentSize);
+//                    mCaptureWidth = info.width;
+//                    mCaptureHeight = info.height;
+//                    mDisplayViewWidth = mCamSurfaceView.getWidth();
+//                    mDisplayViewHeight = mCamSurfaceView.getHeight();
+//
+//                    //开始编码
+//                    mVideoEncodeProcessor.startEncode(mCamSurfaceView, mCaptureWidth, mCaptureHeight, mFps);
+//                    //编码线程创建一个纹理id 包装为SurfaceTexture 用作相机渲染
+//                    SurfaceTexture surfaceTexture = mVideoEncodeProcessor.getCameraTexture();
+//                    //相机开启 渲染到上述surfaceTexture
+//                    CameraManager.getInstance().startCapture(surfaceTexture);
+//
+//                    mEncBtn.setText("enc stop");
+//                }else{
+//                    CameraManager.getInstance().stopPreview();
+//                    mVideoEncodeProcessor.stopCapture();
+//
+//                    mEncBtn.setText("enc start");
+//                }
+//            }
+//        });
+//
+//        mPlayBtn.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                if(mIsStartPlay){
+//                    mH264VideoDecodeProcessor.release();
+//                    mPlayBtn.setText("PLAY");
+//                }else {
+//
+//                    CameraManager.CamSizeDetailInfo info = CameraManager.getInstance().getCamSize(mCurrentSize);
+//                    mCaptureWidth = info.width;
+//                    mCaptureHeight = info.height;
+//
+//                    mH264VideoDecodeProcessor.startPlay(mCaptureWidth, mCaptureHeight);
+//                    mPlayBtn.setText("STOP");
+//                }
+//                mIsStartPlay = !mIsStartPlay;
+//            }
+//        });
 
 //        mVp8VideoDecodeProcessor.setOnVideoDecodeEventListener(new VideoDecodeProcessor.OnVideoDecodeEventListener() {
 //            @Override
@@ -204,40 +207,40 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        CameraManager.getInstance().setOnCameraPreviewListener(new OnCameraPreviewListener() {
-            @Override
-            public void onPreview(int width, int height, byte[] data) {
-                Logger.i(TAG, "onPreview w "+width+" h "+height);
-            }
-        });
+//        CameraManager.getInstance().setOnCameraPreviewListener(new OnCameraPreviewListener() {
+//            @Override
+//            public void onPreview(int width, int height, byte[] data) {
+//                Logger.i(TAG, "onPreview w "+width+" h "+height);
+//            }
+//        });
+//
+//        mTestImage = findViewById(R.id.iv_test);
+//        mDisplayRgbBtn = findViewById(R.id.btn_diplay_rgb);
+//
+//        mDisplayRgbBtn.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//
+//
+//            }
+//        });
+//
+//        mTestBtn.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                startActivity(new Intent(MainActivity.this, DummyActivity.class));
+//            }
+//        });
 
-        mTestImage = findViewById(R.id.iv_test);
-        mDisplayRgbBtn = findViewById(R.id.btn_diplay_rgb);
-
-        mDisplayRgbBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-
-
-            }
-        });
-
-        mTestBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                startActivity(new Intent(MainActivity.this, DummyActivity.class));
-            }
-        });
-
-        openCamera();
+        //openCamera();
     }
-
-    private void openCamera(){
-        CameraManager.getInstance().closeCamera();
-        CameraManager.getInstance().openCamera(mCameraIndex, mCurrentSize, mFps);
-    }
-
-    private void closeCamera(){
-        CameraManager.getInstance().closeCamera();
-    }
+//
+//    private void openCamera(){
+//        CameraManager.getInstance().closeCamera();
+//        CameraManager.getInstance().openCamera(mCameraIndex, mCurrentSize, mFps);
+//    }
+//
+//    private void closeCamera(){
+//        CameraManager.getInstance().closeCamera();
+//    }
 }

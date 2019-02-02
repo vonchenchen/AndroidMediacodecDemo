@@ -119,7 +119,6 @@ public class DecodeTask extends Thread{
     private void release(){
         //停止读取
         mH264DataReader.close();
-        mRenderTask.stopRender();
     }
 
     @Override
