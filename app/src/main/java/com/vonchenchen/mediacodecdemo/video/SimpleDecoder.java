@@ -11,7 +11,8 @@ public class SimpleDecoder {
 
     private static final String TAG = "SimpleDecoder";
 
-    private static final long DEFAULT_TIMEOUT_US = 1000000;
+    /** 解码器超时时间 如果解码异常会等待的时间 不要太长 否则一旦数据不完整会引起较长的黑屏时间 */
+    private static final long DEFAULT_TIMEOUT_US = 250000;
 
     private Surface mSurface;
 

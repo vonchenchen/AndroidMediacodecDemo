@@ -404,9 +404,15 @@ public class CircularEncoder {
 
                     } else if (mBufferInfo.flags == MediaCodec.BUFFER_FLAG_SYNC_FRAME) {
 
-                        byte[] keyframe = new byte[mBufferInfo.size + configbyte.length];
-                        System.arraycopy(configbyte, 0, keyframe, 0, configbyte.length);
-                        System.arraycopy(outData, 0, keyframe, configbyte.length, outData.length);
+                        byte[] keyframe;
+                        if(((short)outData[4] & 0x001f) == 0x05){
+                            //IDR帧前加入sps pps
+                            keyframe = new byte[mBufferInfo.size + configbyte.length];
+                            System.arraycopy(configbyte, 0, keyframe, 0, configbyte.length);
+                            System.arraycopy(outData, 0, keyframe, configbyte.length, outData.length);
+                        }else {
+                            keyframe = outData;
+                        }
 
                         if (VERBOSE) {
                             Logger.v(TAG , "OnEncodedData BUFFER_FLAG_SYNC_FRAME " + keyframe.length);

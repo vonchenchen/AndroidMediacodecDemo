@@ -1,7 +1,6 @@
 package com.vonchenchen.mediacodecdemo.video;
 
 import android.graphics.SurfaceTexture;
-import android.opengl.EGLContext;
 import android.opengl.GLES20;
 import android.view.Surface;
 import android.view.SurfaceHolder;
@@ -46,8 +45,8 @@ public class RenderTask {
 
     /** 外部画布传入的surface 作为egl环境的窗口 切换egl环境 会渲染到不同的窗口 */
     private Surface mRenderSurface;
-    private int mWidth;
-    private int mHeight;
+    private int mCurrentFrameWidth;
+    private int mCurrentFrameHeight;
 
     private int mSurfaceWidth;
     private int mSurfaceHeight;
@@ -65,8 +64,8 @@ public class RenderTask {
 
     public void initRender(int width, int height, SurfaceView surfaceView, String mediaFormatType){
 
-        mWidth = width;
-        mHeight = height;
+        mCurrentFrameWidth = width;
+        mCurrentFrameHeight = height;
         mRenderSurfaceView = surfaceView;
         mMediaFormatType = mediaFormatType;
 
@@ -222,7 +221,7 @@ public class RenderTask {
             mDecodeSurface = new Surface(mDecodeSurfaceTexture);
 
             mDecodeWrapper = new DecodeWrapper();
-            mDecodeWrapper.init(mWidth, mHeight, mDecodeSurface, mMediaFormatType);
+            mDecodeWrapper.init(mCurrentFrameWidth, mCurrentFrameHeight, mDecodeSurface, mMediaFormatType);
         }
     }
 
@@ -240,7 +239,7 @@ public class RenderTask {
         mRendererWindowSurface.makeCurrent();
         GLES20.glViewport(0, 0, mSurfaceWidth, mSurfaceHeight);
 
-        float[] vertex = ScaleUtils.getScaleVertexMat(mSurfaceWidth, mSurfaceHeight, 1280, 720);
+        float[] vertex = ScaleUtils.getScaleVertexMat(mSurfaceWidth, mSurfaceHeight, mCurrentFrameWidth, mCurrentFrameHeight);
         mEXTTexDrawer.rescaleDrawRect(vertex);
 
         mEXTTexDrawer.drawFrame(mTextureId, mDecodeMVPMatrix);
@@ -250,10 +249,8 @@ public class RenderTask {
 
     public int decode(byte[] input, int offset, int count , long pts){
 
-        byte[] data = new byte[6];
-        for(int i=0; i<6; i++){
-            data[i] = input[i];
-        }
+        byte[] data = new byte[50];
+        System.arraycopy(input, offset, data, 0, 50);
         String str = Utils.byteArrayToHexString(data);
         Logger.i(TAG, "lidechen_test decode="+str);
 
