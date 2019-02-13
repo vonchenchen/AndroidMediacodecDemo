@@ -140,19 +140,19 @@ public class SimpleDemoActivity extends Activity{
             }
 
             @Override
-            public void onConfigFrameRecv(byte[] data, int length) {
+            public void onConfigFrameRecv(byte[] data, int length, int videoWidth, int videoHeight) {
 
                 mMediaDataWriter.write(data, length);
             }
 
             @Override
-            public void onKeyFrameRecv(byte[] data, int length) {
+            public void onKeyFrameRecv(byte[] data, int length, int videoWidth, int videoHeight) {
 
                 mMediaDataWriter.write(data, length);
             }
 
             @Override
-            public void onOtherFrameRecv(byte[] data, int length) {
+            public void onOtherFrameRecv(byte[] data, int length, int videoWidth, int videoHeight) {
 
                 mMediaDataWriter.write(data, length);
             }

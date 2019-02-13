@@ -2,7 +2,6 @@ package com.vonchenchen.mediacodecdemo.video;
 
 import android.graphics.SurfaceTexture;
 import android.graphics.SurfaceTexture.OnFrameAvailableListener;
-import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
@@ -36,9 +35,6 @@ public class EncodeTask {
     private SurfaceView mRenderSurfaceView;
 	private Surface mRenderSurface;
 
-	private int mSurfaceWidth;
-	private int mSurfaceHeight;
-
     /** 相机矩阵 由当前相机纹理生成的SurfaceTexture获取 */
     private final float[] mCameraMVPMatrix = new float[16];
     /** 编码视频矩阵 mCameraMVPMatrix X mEncodeTextureMatrix */
@@ -47,8 +43,21 @@ public class EncodeTask {
 	/** 处理当前编码图像的 平移 旋转 缩放 */
     private final float[] mEncodeTextureMatrix = new float[16];
 
+    /** 控件宽高 用于计算比例 */
+	private int mSurfaceWidth;
+	private int mSurfaceHeight;
+
+	/** 相机采集宽高 */
     private int mCaptureWidth;
     private int mCaptureHeight;
+
+    /** 小流宽高 */
+    private int mStreamWidth;
+	private int mStreamHeight;
+
+	/** 大流宽高 */
+	private int mHDStreamWidth;
+	private int mHEStreamHeight;
 
 	private int mFrameRate;
 
@@ -60,8 +69,8 @@ public class EncodeTask {
 	/** 渲染surface 由外部需要渲染的画布传入 */
 	private WindowSurface mRenderWindowSurface;
 
-	private CircularEncoder mSimpleEncoder;
-	private CircularEncoder mHDEncoder;
+	private SimpleEncoder mSimpleEncoder;
+	private SimpleEncoder mHDEncoder;
 
 	private SurfaceHolder mSurfaceHolder;
 	private int mFrameCount = 0;
@@ -69,7 +78,7 @@ public class EncodeTask {
 	/** 渲染surface的holder */
 	private HolderCallback mHolderCallback;
 
-	private CircularEncoder.OnCricularEncoderEventListener mOnCricularEncoderEventListener;
+	private SimpleEncoder.OnCricularEncoderEventListener mOnCricularEncoderEventListener;
 	private OnEncodeTaskEventListener mOnEncodeTaskEventListener;
 
 	private float[] mBaseScaleVertexBuf = {
@@ -83,7 +92,7 @@ public class EncodeTask {
 			1.0f,  1.0f,
 	};
 
-	public EncodeTask(SurfaceView surfaceView , int width , int height, int frameRate, CircularEncoder.OnCricularEncoderEventListener listener) {
+	public EncodeTask(SurfaceView surfaceView , int width , int height, int frameRate, SimpleEncoder.OnCricularEncoderEventListener listener) {
 
 		mMsgQueue = new MsgPipe<>();
 
@@ -199,7 +208,10 @@ public class EncodeTask {
 				mOnEncodeTaskEventListener.onCameraTextureReady(mCameraTexture);
 			}
 
-			mSimpleEncoder = new CircularEncoder(mCaptureWidth, mCaptureHeight, mFrameRate, MediaFormat.MIMETYPE_VIDEO_AVC, true);
+			mStreamWidth = mCaptureWidth;
+			mStreamHeight = mCaptureHeight;
+
+			mSimpleEncoder = new SimpleEncoder(mStreamWidth, mStreamHeight, mFrameRate, MediaFormat.MIMETYPE_VIDEO_AVC, true);
 			mSimpleEncoder.setOnCricularEncoderEventListener(mOnCricularEncoderEventListener);
 			//getInputSurface()最终获取的是MediaCodec调用createInputSurface()方法创建的Surface
 			//这个Surface传入当前egl环境 作为egl的窗口参数(win) 通过eglCreateWindowSurface与egldisplay进行关联

@@ -52,8 +52,8 @@ import java.nio.ByteBuffer;
  * When we're told to save a snapshot, we create a MediaMuxer, write all the frames out,
  * and then go back to what we were doing.
  */
-public class CircularEncoder {
-    private static final String TAG = "CircularEncoder";
+public class SimpleEncoder {
+    private static final String TAG = "SimpleEncoder";
     private static final boolean VERBOSE = false;
 
     private static String VIDEO_MIME_TYPE = "video/avc";    // H.264 Advanced Video Coding
@@ -77,14 +77,14 @@ public class CircularEncoder {
      * @param frameRate Expected frame rate.
      */
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-    public CircularEncoder(int width, int height, int frameRate)
+    public SimpleEncoder(int width, int height, int frameRate)
     		throws IOException {
         this(width , height , frameRate , VIDEO_MIME_TYPE, true);
 
     }
 
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-    public CircularEncoder(int width, int height, int frameRate , String mimeType, boolean hd) {
+    public SimpleEncoder(int width, int height, int frameRate , String mimeType, boolean hd) {
         mHDBuffer = hd;
         // The goal is to size the buffer so that we can accumulate N seconds worth of video,
         // where N is passed in as "desiredSpanSec".  If the codec generates data at roughly
@@ -398,7 +398,7 @@ public class CircularEncoder {
                         Logger.d(TAG, "drainVideoEncoder CODEC_CONFIG: "+ toString(outData));
 
                         if(mOnCricularEncoderEventListener != null){
-                            mOnCricularEncoderEventListener.onConfigFrameReceive(outData, mBufferInfo.size);
+                            mOnCricularEncoderEventListener.onConfigFrameReceive(outData, mBufferInfo.size, mVideoWidth, mVideoHeight);
                         }
 
                     } else if (mBufferInfo.flags == MediaCodec.BUFFER_FLAG_SYNC_FRAME) {
@@ -420,7 +420,7 @@ public class CircularEncoder {
                         Logger.d(TAG, "drainVideoEncoder CODEC_SYNC_FRAME: "+ toString(keyframe));
 
                         if(mOnCricularEncoderEventListener != null){
-                            mOnCricularEncoderEventListener.onKeyFrameReceive(keyframe, keyframe.length);
+                            mOnCricularEncoderEventListener.onKeyFrameReceive(keyframe, keyframe.length, mVideoWidth, mVideoHeight);
                         }
 
                         mFrameCount ++;
@@ -445,7 +445,7 @@ public class CircularEncoder {
                         Logger.d(TAG, "drainVideoEncoder P_FRAME: "+ toString(outData));
 
                         if(mOnCricularEncoderEventListener != null){
-                            mOnCricularEncoderEventListener.onOtherFrameReceive(outData, mBufferInfo.size);
+                            mOnCricularEncoderEventListener.onOtherFrameReceive(outData, mBufferInfo.size, mVideoWidth, mVideoHeight);
                         }
 
                         mFrameCount ++;
@@ -498,7 +498,7 @@ public class CircularEncoder {
         /**
          * Drains the encoder output.
          * <p>
-         * See notes for {@link CircularEncoder#frameAvailableSoon()}.
+         * See notes for {@link SimpleEncoder#frameAvailableSoon()}.
          */
         void frameAvailableSoon() {
             if (VERBOSE) Logger.d(TAG, "frameAvailableSoon");
@@ -514,7 +514,9 @@ public class CircularEncoder {
          */
         void shutdown() {
 
-            if (VERBOSE) Logger.d(TAG, "shutdown");
+            if (VERBOSE){
+                Logger.d(TAG, "shutdown");
+            }
             Looper looper = Looper.myLooper();
             if(looper == null) {
                 return ;
@@ -597,9 +599,9 @@ public class CircularEncoder {
     }
 
     public interface OnCricularEncoderEventListener{
-        void onConfigFrameReceive(byte[] data, int length);
-        void onKeyFrameReceive(byte[] data, int length);
-        void onOtherFrameReceive(byte[] data, int length);
+        void onConfigFrameReceive(byte[] data, int length, int frameWidth, int frameHeight);
+        void onKeyFrameReceive(byte[] data, int length, int frameWidth, int frameHeight);
+        void onOtherFrameReceive(byte[] data, int length, int frameWidth, int frameHeight);
         void onFrameRateReceive(int frameRate);
     }
 }

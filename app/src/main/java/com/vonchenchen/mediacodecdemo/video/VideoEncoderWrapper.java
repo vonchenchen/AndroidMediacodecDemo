@@ -3,10 +3,6 @@ package com.vonchenchen.mediacodecdemo.video;
 import android.graphics.SurfaceTexture;
 import android.view.SurfaceView;
 
-import com.vonchenchen.mediacodecdemo.io.MediaDataWriter;
-
-import java.io.FileNotFoundException;
-
 /**
  * Created by vonchenchen on 2018/4/15.
  */
@@ -28,25 +24,25 @@ public class VideoEncoderWrapper {
      */
     public void startEncode(SurfaceView surfaceView, int width, int height, int frameRate){
 
-        mEncodeTask = new EncodeTask(surfaceView, width, height, frameRate, new CircularEncoder.OnCricularEncoderEventListener() {
+        mEncodeTask = new EncodeTask(surfaceView, width, height, frameRate, new SimpleEncoder.OnCricularEncoderEventListener() {
             @Override
-            public void onConfigFrameReceive(byte[] data, int length) {
+            public void onConfigFrameReceive(byte[] data, int length, int videoWidth, int videoHeight) {
                 if(mOnVideoEncodeEventListener != null){
-                    mOnVideoEncodeEventListener.onConfigFrameRecv(data, length);
+                    mOnVideoEncodeEventListener.onConfigFrameRecv(data, length, videoWidth, videoHeight);
                 }
             }
 
             @Override
-            public void onKeyFrameReceive(byte[] data, int length) {
+            public void onKeyFrameReceive(byte[] data, int length, int videoWidth, int videoHeight) {
                 if(mOnVideoEncodeEventListener != null){
-                    mOnVideoEncodeEventListener.onKeyFrameRecv(data, length);
+                    mOnVideoEncodeEventListener.onKeyFrameRecv(data, length, videoWidth, videoHeight);
                 }
             }
 
             @Override
-            public void onOtherFrameReceive(byte[] data, int length) {
+            public void onOtherFrameReceive(byte[] data, int length, int videoWidth, int videoHeight) {
                 if(mOnVideoEncodeEventListener != null){
-                    mOnVideoEncodeEventListener.onOtherFrameRecv(data, length);
+                    mOnVideoEncodeEventListener.onOtherFrameRecv(data, length, videoWidth, videoHeight);
                 }
             }
 
@@ -103,20 +99,20 @@ public class VideoEncoderWrapper {
          * @param data
          * @param length
          */
-        void onConfigFrameRecv(byte[] data, int length);
+        void onConfigFrameRecv(byte[] data, int length, int videoWidth, int videoHeight);
 
         /**
          * 收到关键帧
          * @param data
          * @param length
          */
-        void onKeyFrameRecv(byte[] data, int length);
+        void onKeyFrameRecv(byte[] data, int length, int videoWidth, int videoHeight);
 
         /**
          * 收到非关键帧
          * @param data
          * @param length
          */
-        void onOtherFrameRecv(byte[] data, int length);
+        void onOtherFrameRecv(byte[] data, int length, int videoWidth, int videoHeight);
     }
 }
