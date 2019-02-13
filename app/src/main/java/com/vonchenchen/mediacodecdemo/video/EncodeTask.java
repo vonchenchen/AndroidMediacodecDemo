@@ -246,6 +246,8 @@ public class EncodeTask {
 			//显示图像全部 glViewport 传入当前控件的宽高
 			GLES20.glViewport(0, 0, mSurfaceWidth, mSurfaceHeight);
 
+			//Matrix.rotateM(mCameraMVPMatrix, 0, 270, 0, 0, 1);
+
 			//通过修改顶点坐标 将采集到的视频按比例缩放到窗口中
 			float[] drawVertexMat = ScaleUtils.getScaleVertexMat(mSurfaceWidth, mSurfaceHeight, mCaptureWidth, mCaptureHeight);
 			mInternalTexDrawer.rescaleDrawRect(drawVertexMat);
@@ -312,6 +314,7 @@ public class EncodeTask {
 		mMsgQueue.clearPipeData();
 
 		if(mRenderWindowSurface != null){
+			//解除egl绑定的当前eglsurface 释放Android本地surface
 			mRenderWindowSurface.release();
 			mRenderWindowSurface = null;
 		}
