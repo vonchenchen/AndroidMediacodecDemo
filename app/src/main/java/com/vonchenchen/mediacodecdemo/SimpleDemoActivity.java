@@ -6,16 +6,17 @@ import android.graphics.SurfaceTexture;
 import android.media.MediaFormat;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
-import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
 import com.vonchenchen.mediacodecdemo.camera.CameraManager;
+import com.vonchenchen.mediacodecdemo.io.MediaDataWriter;
 import com.vonchenchen.mediacodecdemo.video.DecodeTask;
-import com.vonchenchen.mediacodecdemo.video.EncodeTask;
-import com.vonchenchen.mediacodecdemo.video.VideoEncodeProcessor;
+import com.vonchenchen.mediacodecdemo.video.VideoEncoderWrapper;
+
+import java.io.FileNotFoundException;
 
 public class SimpleDemoActivity extends Activity{
 
@@ -28,7 +29,8 @@ public class SimpleDemoActivity extends Activity{
 
     private DecodeTask mDecodeTask;
 
-    private VideoEncodeProcessor mVideoEncodeProcessor;
+    private VideoEncoderWrapper mVideoEncoderWrapper;
+    private MediaDataWriter mMediaDataWriter;
 
     private CameraManager.CameraSize mCurrentSize = CameraManager.CameraSize.SIZE_720P;
     private int mFps = 20;
@@ -89,13 +91,22 @@ public class SimpleDemoActivity extends Activity{
 
                     CameraManager.CamSizeDetailInfo info = CameraManager.getInstance().getCamSize(mCurrentSize);
 
+                    try {
+                        mMediaDataWriter = new MediaDataWriter("/sdcard/test.h264");
+                    } catch (FileNotFoundException e) {
+                        e.printStackTrace();
+                    }
+
                     //开始编码
-                    mVideoEncodeProcessor.startEncode(mMainSurfaceView, info.width, info.height, mFps);
+                    mVideoEncoderWrapper.startEncode(mMainSurfaceView, info.width, info.height, mFps);
 
                     mStartRecord.setText("stopRecord");
                 }else{
                     CameraManager.getInstance().stopCapture();
-                    mVideoEncodeProcessor.stopCapture();
+                    mVideoEncoderWrapper.stopEncode();
+
+                    mMediaDataWriter.close();
+                    mMediaDataWriter = null;
 
                     mStartRecord.setText("startRecord");
                 }
@@ -110,23 +121,40 @@ public class SimpleDemoActivity extends Activity{
         });
 
         //编码设置
-        mVideoEncodeProcessor = new VideoEncodeProcessor("/sdcard/test.h264");
-        mVideoEncodeProcessor.setOnVideoEncodeEventListener(new VideoEncodeProcessor.OnVideoEncodeEventListener() {
+        mVideoEncoderWrapper = new VideoEncoderWrapper();
+        mVideoEncoderWrapper.setOnVideoEncodeEventListener(new VideoEncoderWrapper.OnVideoEncodeEventListener() {
             @Override
-            public void onFrameRate(final int frameRate) {
+            public void onEncodeFrameRate(final int frameRate) {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         mFrameRateText.setText("framerate="+frameRate);
                     }
                 });
-
             }
 
             @Override
             public void onCameraTextureReady(SurfaceTexture camSurfaceTexture) {
 
                 CameraManager.getInstance().startCapture(camSurfaceTexture);
+            }
+
+            @Override
+            public void onConfigFrameRecv(byte[] data, int length) {
+
+                mMediaDataWriter.write(data, length);
+            }
+
+            @Override
+            public void onKeyFrameRecv(byte[] data, int length) {
+
+                mMediaDataWriter.write(data, length);
+            }
+
+            @Override
+            public void onOtherFrameRecv(byte[] data, int length) {
+
+                mMediaDataWriter.write(data, length);
             }
         });
 

@@ -1,8 +1,6 @@
 package com.vonchenchen.mediacodecdemo.video;
 
-import android.content.Context;
 import android.graphics.SurfaceTexture;
-import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
 import com.vonchenchen.mediacodecdemo.io.MediaDataWriter;
@@ -13,17 +11,13 @@ import java.io.FileNotFoundException;
  * Created by vonchenchen on 2018/4/15.
  */
 
-public class VideoEncodeProcessor {
+public class VideoEncoderWrapper {
 
     private EncodeTask mEncodeTask;
-    private MediaDataWriter mMediaDataWriter;
+
     private String mPath;
 
     private OnVideoEncodeEventListener mOnVideoEncodeEventListener = null;
-
-    public VideoEncodeProcessor(String outPath){
-        mPath = outPath;
-    }
 
     /**
      * 开始采集并渲染和编码
@@ -34,33 +28,32 @@ public class VideoEncodeProcessor {
      */
     public void startEncode(SurfaceView surfaceView, int width, int height, int frameRate){
 
-        try {
-            mMediaDataWriter = new MediaDataWriter(mPath);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-
         mEncodeTask = new EncodeTask(surfaceView, width, height, frameRate, new CircularEncoder.OnCricularEncoderEventListener() {
             @Override
             public void onConfigFrameReceive(byte[] data, int length) {
-                mMediaDataWriter.write(data, length);
+                if(mOnVideoEncodeEventListener != null){
+                    mOnVideoEncodeEventListener.onConfigFrameRecv(data, length);
+                }
             }
 
             @Override
             public void onKeyFrameReceive(byte[] data, int length) {
-                mMediaDataWriter.write(data, length);
+                if(mOnVideoEncodeEventListener != null){
+                    mOnVideoEncodeEventListener.onKeyFrameRecv(data, length);
+                }
             }
 
             @Override
             public void onOtherFrameReceive(byte[] data, int length) {
-                mMediaDataWriter.write(data, length);
+                if(mOnVideoEncodeEventListener != null){
+                    mOnVideoEncodeEventListener.onOtherFrameRecv(data, length);
+                }
             }
 
             @Override
             public void onFrameRateReceive(int frameRate) {
-
                 if(mOnVideoEncodeEventListener != null){
-                    mOnVideoEncodeEventListener.onFrameRate(frameRate);
+                    mOnVideoEncodeEventListener.onEncodeFrameRate(frameRate);
                 }
             }
         });
@@ -68,7 +61,6 @@ public class VideoEncodeProcessor {
         mEncodeTask.setOnEncodeTaskEventListener(new EncodeTask.OnEncodeTaskEventListener() {
             @Override
             public void onCameraTextureReady(SurfaceTexture camSurfaceTexture) {
-
                 if(mOnVideoEncodeEventListener != null){
                     mOnVideoEncodeEventListener.onCameraTextureReady(camSurfaceTexture);
                 }
@@ -82,12 +74,9 @@ public class VideoEncodeProcessor {
         return mEncodeTask.getCameraTexture();
     }
 
-    public void stopCapture(){
+    public void stopEncode(){
         if(mEncodeTask != null) {
             mEncodeTask.stopEncodeTask();
-        }
-        if(mMediaDataWriter != null) {
-            mMediaDataWriter.close();
         }
     }
 
@@ -96,7 +85,38 @@ public class VideoEncodeProcessor {
     }
 
     public interface OnVideoEncodeEventListener{
-        void onFrameRate(int frameRate);
+
+        /**
+         * 编码帧率
+         * @param frameRate
+         */
+        void onEncodeFrameRate(int frameRate);
+
+        /**
+         * 编码器surfacetexture就绪
+         * @param camSurfaceTexture
+         */
         void onCameraTextureReady(SurfaceTexture camSurfaceTexture);
+
+        /**
+         * 收到编码配置信息
+         * @param data
+         * @param length
+         */
+        void onConfigFrameRecv(byte[] data, int length);
+
+        /**
+         * 收到关键帧
+         * @param data
+         * @param length
+         */
+        void onKeyFrameRecv(byte[] data, int length);
+
+        /**
+         * 收到非关键帧
+         * @param data
+         * @param length
+         */
+        void onOtherFrameRecv(byte[] data, int length);
     }
 }

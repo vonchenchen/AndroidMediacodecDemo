@@ -201,7 +201,7 @@ public class CameraManager {
 
     public void stopPreview(){
         if(mCamera != null) {
-            Logger.i(TAG, "[stopCapture] enter");
+            Logger.i(TAG, "[stopPreview] enter");
             mCamera.stopPreview();
             try {
                 mCamera.setPreviewTexture(null);
