@@ -435,17 +435,10 @@ public class SimpleEncoder {
 
                     } else {
 
-                        byte[] pFrame = new byte[outData.length - HEADER_LENGTH];
-                        System.arraycopy(outData, HEADER_LENGTH, pFrame, 0, pFrame.length);
-
-                        if (VERBOSE) {
-                            Logger.v(TAG , "OnEncodedData pFrame " + pFrame.length);
-                        }
-
                         Logger.d(TAG, "drainVideoEncoder P_FRAME: "+ toString(outData));
 
                         if(mOnCricularEncoderEventListener != null){
-                            mOnCricularEncoderEventListener.onOtherFrameReceive(outData, mBufferInfo.size, mVideoWidth, mVideoHeight);
+                            mOnCricularEncoderEventListener.onOtherFrameReceive(outData, outData.length, mVideoWidth, mVideoHeight);
                         }
 
                         mFrameCount ++;

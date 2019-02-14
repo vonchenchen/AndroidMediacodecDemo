@@ -49,9 +49,9 @@ public class DecodeTask extends Thread{
 
         try {
             if(mMediaFormatType == MediaFormat.MIMETYPE_VIDEO_AVC) {
-                mStreamDataReader = new H264DataReader(mPath, 1280 * 720 * 3);
+                mStreamDataReader = new H264DataReader(mPath, width * height * 3);
             }else if(mMediaFormatType == MediaFormat.MIMETYPE_VIDEO_VP8){
-                mStreamDataReader = new IVFDataReader(mPath, 1280 * 720 * 3);
+                mStreamDataReader = new IVFDataReader(mPath, width * height * 3);
             }
         } catch (FileNotFoundException e) {
             Logger.e(TAG, "[initRender] "+e.toString());
