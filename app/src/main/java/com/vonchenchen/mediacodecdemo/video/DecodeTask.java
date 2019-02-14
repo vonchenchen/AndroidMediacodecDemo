@@ -1,9 +1,12 @@
 package com.vonchenchen.mediacodecdemo.video;
 
+import android.media.MediaFormat;
 import android.view.SurfaceView;
 
 import com.vonchenchen.mediacodecdemo.io.H264DataReader;
 import com.vonchenchen.mediacodecdemo.io.IStreamDataReader;
+import com.vonchenchen.mediacodecdemo.io.IVFDataReader;
+import com.vonchenchen.mediacodecdemo.io.MediaDataReader;
 
 import java.io.FileNotFoundException;
 import java.util.Arrays;
@@ -16,7 +19,7 @@ public class DecodeTask extends Thread{
 
     private boolean mIsLoop = true;
 
-    private H264DataReader mH264DataReader;
+    private IStreamDataReader mStreamDataReader;
 
     private RenderTask mRenderTask;
 
@@ -45,12 +48,16 @@ public class DecodeTask extends Thread{
         mIsLoop = true;
 
         try {
-            mH264DataReader = new H264DataReader(mPath , 1280*720*3);
+            if(mMediaFormatType == MediaFormat.MIMETYPE_VIDEO_AVC) {
+                mStreamDataReader = new H264DataReader(mPath, 1280 * 720 * 3);
+            }else if(mMediaFormatType == MediaFormat.MIMETYPE_VIDEO_VP8){
+                mStreamDataReader = new IVFDataReader(mPath, 1280 * 720 * 3);
+            }
         } catch (FileNotFoundException e) {
             Logger.e(TAG, "[initRender] "+e.toString());
         }
 
-        mH264DataReader.setOnDataParsedListener(new IStreamDataReader.OnDataParsedListener() {
+        mStreamDataReader.setOnDataParsedListener(new IStreamDataReader.OnDataParsedListener() {
             @Override
             public void onParsed(byte[] data, int index, int length) {
 
@@ -118,7 +125,7 @@ public class DecodeTask extends Thread{
 
     private void release(){
         //停止读取
-        mH264DataReader.close();
+        mStreamDataReader.close();
     }
 
     @Override
@@ -128,7 +135,7 @@ public class DecodeTask extends Thread{
         while (mIsLoop){
 
             try {
-                ret = mH264DataReader.readNextFrame();
+                ret = mStreamDataReader.readNextFrame();
             }catch (Exception e){
                 Logger.e(TAG, "[run] "+e.toString());
             }

@@ -39,6 +39,7 @@ public class SimpleDecoder {
         mWidth = width;
         mHeight = height;
         mSurface = surface;
+        mMediaFormatType = mediaFormatType;
         init();
     }
 

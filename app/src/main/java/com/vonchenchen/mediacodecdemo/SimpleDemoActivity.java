@@ -21,13 +21,17 @@ import java.io.FileNotFoundException;
 public class SimpleDemoActivity extends Activity{
 
     private SurfaceView mMainSurfaceView;
-    private Button mStartRecord;
-    private Button mStartPlay;
+    private Button mStartRecordH264Btn;
+    private Button mStartPlayH264Btn;
+    private Button mStartPlayVp8Btn;
+
     private TextView mFrameRateText;
 
     private boolean mIsStartPlay = false;
+    private boolean mIsStartPlayVp8 = false;
 
-    private DecodeTask mDecodeTask;
+    private DecodeTask mDecodeH264Task;
+    private DecodeTask mDecodeVp8Task;
 
     private VideoEncoderWrapper mVideoEncoderWrapper;
     private MediaDataWriter mMediaDataWriter;
@@ -42,30 +46,30 @@ public class SimpleDemoActivity extends Activity{
         setContentView(R.layout.activity_simpledemo);
 
         mMainSurfaceView = findViewById(R.id.surface_main);
-        mStartRecord = findViewById(R.id.btn_startRecord);
-        mStartPlay = findViewById(R.id.btn_startPlay);
+        mStartRecordH264Btn = findViewById(R.id.btn_startRecord);
+        mStartPlayH264Btn = findViewById(R.id.btn_startPlay);
         mFrameRateText = findViewById(R.id.tv_frameRate);
 
-        mStartPlay.setOnClickListener(new View.OnClickListener() {
+        mStartPlayH264Btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 if(!mIsStartPlay){
-                    mStartPlay.setText("stopPlay");
+                    mStartPlayH264Btn.setText("stopPlay");
                     mIsStartPlay = true;
 
                     //h264读取并解码线程
                     String inputPathAvc = "/sdcard/test.h264";
-                    mDecodeTask = new DecodeTask(inputPathAvc);
-                    mDecodeTask.setDecodeTaskEventListener(new DecodeTask.DecodeTaskEventListener() {
+                    mDecodeH264Task = new DecodeTask(inputPathAvc);
+                    mDecodeH264Task.setDecodeTaskEventListener(new DecodeTask.DecodeTaskEventListener() {
                         @Override
                         public void onDecodeThreadEnd() {
 
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    mStartPlay.setText("startPlay");
+                                    mStartPlayH264Btn.setText("startPlay");
                                     mIsStartPlay = false;
-                                    mDecodeTask.stopDecodeTask();
+                                    mDecodeH264Task.stopDecodeTask();
                                 }
                             });
                         }
@@ -73,17 +77,17 @@ public class SimpleDemoActivity extends Activity{
 
                     CameraManager.CamSizeDetailInfo info = CameraManager.getInstance().getCamSize(mCurrentSize);
                     //渲染线程
-                    mDecodeTask.initTask(info.width, info.height, mMainSurfaceView, MediaFormat.MIMETYPE_VIDEO_AVC);
-                    mDecodeTask.startDecodeTask();
+                    mDecodeH264Task.initTask(info.width, info.height, mMainSurfaceView, MediaFormat.MIMETYPE_VIDEO_AVC);
+                    mDecodeH264Task.startDecodeTask();
                 }else {
-                    mStartPlay.setText("startPlay");
+                    mStartPlayH264Btn.setText("startPlay");
                     mIsStartPlay = false;
-                    mDecodeTask.stopDecodeTask();
+                    mDecodeH264Task.stopDecodeTask();
                 }
             }
         });
 
-        mStartRecord.setOnClickListener(new View.OnClickListener() {
+        mStartRecordH264Btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
 
@@ -100,7 +104,7 @@ public class SimpleDemoActivity extends Activity{
                     //开始编码
                     mVideoEncoderWrapper.startEncode(mMainSurfaceView, info.width, info.height, mFps);
 
-                    mStartRecord.setText("stopRecord");
+                    mStartRecordH264Btn.setText("stopRecord");
                 }else{
                     CameraManager.getInstance().stopCapture();
                     mVideoEncoderWrapper.stopEncode();
@@ -108,7 +112,7 @@ public class SimpleDemoActivity extends Activity{
                     mMediaDataWriter.close();
                     mMediaDataWriter = null;
 
-                    mStartRecord.setText("startRecord");
+                    mStartRecordH264Btn.setText("startRecord");
                 }
             }
         });
@@ -155,6 +159,45 @@ public class SimpleDemoActivity extends Activity{
             public void onOtherFrameRecv(byte[] data, int length, int videoWidth, int videoHeight) {
 
                 mMediaDataWriter.write(data, length);
+            }
+        });
+
+        mStartPlayVp8Btn = findViewById(R.id.btn_playvp8);
+        mStartPlayVp8Btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                if(!mIsStartPlayVp8){
+                    mStartPlayVp8Btn.setText("stopPlayVp8");
+                    mIsStartPlayVp8 = true;
+
+                    //vp8读取并解码线程
+                    String inputPathVp8 = "/sdcard/out.vp8";
+                    mDecodeVp8Task = new DecodeTask(inputPathVp8);
+                    mDecodeVp8Task.setDecodeTaskEventListener(new DecodeTask.DecodeTaskEventListener() {
+                        @Override
+                        public void onDecodeThreadEnd() {
+
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mStartPlayVp8Btn.setText("startPlayVp8");
+                                    mIsStartPlayVp8 = false;
+                                    mDecodeVp8Task.stopDecodeTask();
+                                }
+                            });
+                        }
+                    });
+
+                    //CameraManager.CamSizeDetailInfo info = CameraManager.getInstance().getCamSize(mCurrentSize);
+                    //渲染线程
+                    mDecodeVp8Task.initTask(352, 288, mMainSurfaceView, MediaFormat.MIMETYPE_VIDEO_VP8);
+                    mDecodeVp8Task.startDecodeTask();
+                }else {
+                    mStartPlayVp8Btn.setText("startPlayVp8");
+                    mIsStartPlayVp8 = false;
+                    mDecodeVp8Task.stopDecodeTask();
+                }
             }
         });
 
