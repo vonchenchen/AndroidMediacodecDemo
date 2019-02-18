@@ -38,6 +38,10 @@ public class DecodeTask extends Thread{
         mPath = path;
     }
 
+    public DecodeTask(){
+
+    }
+
     public void initTask(int width, int height, SurfaceView surfaceView, String mediaFormatType){
 
         mWidth = width;

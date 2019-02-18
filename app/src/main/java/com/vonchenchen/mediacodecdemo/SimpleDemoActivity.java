@@ -146,7 +146,7 @@ public class SimpleDemoActivity extends Activity{
             @Override
             public void onConfigFrameRecv(byte[] data, int length, int videoWidth, int videoHeight) {
 
-                mMediaDataWriter.write(data, length);
+                //mMediaDataWriter.write(data, length);
             }
 
             @Override

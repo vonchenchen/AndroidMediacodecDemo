@@ -249,10 +249,10 @@ public class RenderTask {
 
     public int decode(byte[] input, int offset, int count , long pts){
 
-        byte[] data = new byte[50];
-        System.arraycopy(input, offset, data, 0, 50);
-        String str = Utils.byteArrayToHexString(data);
-        Logger.i(TAG, "lidechen_test decode="+str);
+//        byte[] data = new byte[50];
+//        System.arraycopy(input, offset, data, 0, 50);
+//        String str = Utils.byteArrayToHexString(data);
+//        Logger.i(TAG, "lidechen_test decode="+str);
 
         return mDecodeWrapper.decode(input, offset, count, pts);
     }

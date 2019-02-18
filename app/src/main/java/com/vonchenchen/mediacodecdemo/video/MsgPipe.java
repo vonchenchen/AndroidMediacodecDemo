@@ -26,7 +26,7 @@ public class MsgPipe<T> extends Thread{
             if(mMsgQueue.isEmpty()){
                 synchronized (mMsgQueue){
                     try {
-                        mMsgQueue.wait(300);
+                        mMsgQueue.wait(1000);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
