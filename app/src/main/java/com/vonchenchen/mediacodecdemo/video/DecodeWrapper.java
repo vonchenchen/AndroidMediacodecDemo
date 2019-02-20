@@ -33,6 +33,10 @@ public class DecodeWrapper {
         return mSimpleDecoder.decode(input, offset, count, pts);
     }
 
+    public void setOnDecoderEnventLisetener(SimpleDecoder.OnDecoderEnventLisetener lisetener){
+        mSimpleDecoder.setOnDecoderEnventLisetener(lisetener);
+    }
+
     public void release(){
 
         if(mDecodeSurface != null) {

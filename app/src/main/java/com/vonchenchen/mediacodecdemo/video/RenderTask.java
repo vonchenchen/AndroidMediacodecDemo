@@ -222,6 +222,17 @@ public class RenderTask {
 
             mDecodeWrapper = new DecodeWrapper();
             mDecodeWrapper.init(mCurrentFrameWidth, mCurrentFrameHeight, mDecodeSurface, mMediaFormatType);
+            mDecodeWrapper.setOnDecoderEnventLisetener(new SimpleDecoder.OnDecoderEnventLisetener() {
+                @Override
+                public void onFrameSizeInit(int frameWidth, int frameHeight) {
+
+                }
+
+                @Override
+                public void onFrameSizeChange(int frameWidth, int frameHeight) {
+
+                }
+            });
         }
     }
 

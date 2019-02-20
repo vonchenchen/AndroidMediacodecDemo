@@ -180,6 +180,12 @@ public class EncodeTask {
 			mEglCore = new EglCore(null, EglCore.FLAG_RECORDABLE);
 		}
 
+		if(!mRenderSurface.isValid()){
+			//如果mRenderSurface没有就绪 直接退出 surfaceCreated触发后会再次触发MSG_ENCODE_RESUME_RENDER事件 调用initGL()
+			Logger.i(TAG, "mRenderSurface is not valid");
+			return;
+		}
+
 		//封装egl与对应的surface
 		mRenderWindowSurface = new WindowSurface(mEglCore, mRenderSurface, false);
 		mRenderWindowSurface.makeCurrent();

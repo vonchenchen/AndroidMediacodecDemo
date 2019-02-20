@@ -7,6 +7,9 @@ import android.view.Surface;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import static android.media.MediaCodec.INFO_OUTPUT_FORMAT_CHANGED;
+import static android.media.MediaCodec.INFO_TRY_AGAIN_LATER;
+
 public class SimpleDecoder {
 
     private static final String TAG = "SimpleDecoder";
@@ -29,6 +32,9 @@ public class SimpleDecoder {
     private int mFrameWidth = -1;
     /** 视频帧实际高度 */
     private int mFrameHeight = -1;
+
+    private int mRecWidth = -1;
+    private int mRecHeight = -1;
 
     /**
      * 初始化解码器
@@ -92,31 +98,50 @@ public class SimpleDecoder {
         if (outputBufferIndex >= 0) {
 
             if(mFrameWidth<= 0||mFrameHeight<= 0){
-//                MediaFormat format = mMediaCodec.getOutputFormat();
-//                mFrameWidth = format.getInteger(MediaFormat.KEY_WIDTH);
-//                mFrameHeight = format.getInteger(MediaFormat.KEY_HEIGHT);
+                //首次解码
+                mRecWidth = mFrameWidth;
+                mRecHeight = mFrameHeight;
 
                 Logger.d(TAG , "mFrameWidth=" + mFrameWidth+ " mFrameHeight="+mFrameHeight);
 
                 if(mOnDecoderEnventLisetener != null){
                     mOnDecoderEnventLisetener.onFrameSizeInit(mFrameWidth, mFrameHeight);
                 }
+            }else{
+
+                if(mFrameWidth != mRecWidth || mFrameHeight != mRecHeight){
+                    //码流分辨率改变
+                    mRecWidth = mFrameWidth;
+                    mRecHeight = mFrameHeight;
+
+                    mOnDecoderEnventLisetener.onFrameSizeChange(mFrameWidth, mFrameHeight);
+                }
             }
 
             mMediaCodec.releaseOutputBuffer(outputBufferIndex, true);
+        }else if(outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED){
+            Logger.i(TAG, "decode info MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED");
+        }else if(outputBufferIndex == INFO_OUTPUT_FORMAT_CHANGED){
+            Logger.i(TAG, "decode info MediaCodec.INFO_OUTPUT_FORMAT_CHANGED");
+        }else if(outputBufferIndex == INFO_TRY_AGAIN_LATER){
+            Logger.i(TAG, "decode info MediaCodec.INFO_TRY_AGAIN_LATER");
+        }else {
+            Logger.i(TAG, "decode info outputBufferIndex="+outputBufferIndex);
         }
 
         return outputBufferIndex;
     }
 
-    private DirectDecoder.OnDecoderEnventLisetener mOnDecoderEnventLisetener = null;
+    private OnDecoderEnventLisetener mOnDecoderEnventLisetener = null;
 
-    public void setOnDecoderEnventLisetener(DirectDecoder.OnDecoderEnventLisetener lisetener){
+    public void setOnDecoderEnventLisetener(OnDecoderEnventLisetener lisetener){
         mOnDecoderEnventLisetener = lisetener;
     }
 
     public interface OnDecoderEnventLisetener{
         /** 拿到帧大小 */
         void onFrameSizeInit(int frameWidth, int frameHeight);
+        /** 帧大小变化 此处考虑媒体流的分辨率改变的情况 */
+        void onFrameSizeChange(int frameWidth, int frameHeight);
     }
 }
