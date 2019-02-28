@@ -146,7 +146,15 @@ public class SimpleEncoder {
 
 	@TargetApi(Build.VERSION_CODES.LOLLIPOP)
     private MediaCodec createVideoEncoder() {
-		MediaFormat format = MediaFormat.createVideoFormat(VIDEO_MIME_TYPE, mVideoWidth, mVideoHeight);
+
+        /**
+         * 关于硬编码相关设置
+         *
+         * 目前看Android avc硬编码在Android接口只支持baseline
+         * 编码器设置帧率最好要接近真实帧率 否则可能导致码率控制不准
+         */
+
+        MediaFormat format = MediaFormat.createVideoFormat(VIDEO_MIME_TYPE, mVideoWidth, mVideoHeight);
 
         format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
 
@@ -256,13 +264,18 @@ public class SimpleEncoder {
         handler.sendMessage(handler.obtainMessage(VideoEncoderHandler.MSG_FRAME_AVAILABLE_SOON));
     }
 
-
     void requestKeyFrame() {
         Handler handler = mVideoEncoderThread.getHandler();
         handler.sendMessage(handler.obtainMessage(VideoEncoderHandler.MSG_REQUEST_I_FRAME));
     }
 
-
+    void changeBitrate(int bitrate){
+        Handler handler = mVideoEncoderThread.getHandler();
+        Message msg = Message.obtain();
+        msg.what = VideoEncoderHandler.MSG_CHANGE_BITRATE;
+        msg.arg1 = bitrate;
+        handler.sendMessage(msg);
+    }
 
 	/**
      * Object that encapsulates the encoder thread.
@@ -360,6 +373,20 @@ public class SimpleEncoder {
                 Logger.d(TAG, "Sync frame request");
                 Bundle b = new Bundle();
                 b.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
+                mVideoEncoder.setParameters(b);
+            }
+        }
+
+        void changeBitrate(Message msg){
+
+            if(mVideoEncoder != null){
+
+                int bitrate = msg.arg1;
+
+                Logger.d(TAG, "changeBitrate bitrate="+bitrate);
+
+                Bundle b = new Bundle();
+                b.putInt(MediaCodec.PARAMETER_KEY_VIDEO_BITRATE, bitrate);
                 mVideoEncoder.setParameters(b);
             }
         }
@@ -567,6 +594,7 @@ public class SimpleEncoder {
         static final int MSG_FRAME_AVAILABLE_SOON = 1;
         static final int MSG_REQUEST_I_FRAME = 2;
         static final int MSG_SHUTDOWN = 3;
+        static final int MSG_CHANGE_BITRATE = 4;
 
         // This shouldn't need to be a weak ref, since we'll go away when the Looper quits,
         // but no real harm in it.
@@ -601,6 +629,9 @@ public class SimpleEncoder {
                     break;
                 case MSG_SHUTDOWN:
                     encoderThread.shutdown();
+                    break;
+                case MSG_CHANGE_BITRATE:
+                    encoderThread.changeBitrate(msg);
                     break;
                 default:
                     throw new RuntimeException("unknown message " + what);

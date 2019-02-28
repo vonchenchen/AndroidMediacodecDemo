@@ -154,6 +154,9 @@ public class EncodeTask {
 					//发一条空消息 避免线程等待
 					CodecMsg msgEmpty = new CodecMsg();
 					mMsgQueue.addFirst(msgEmpty);
+				}else if(msg.currentMsg == CodecMsg.MSG.MSG_ENCODE_CHANGE_BITRATE){
+					//改变编码码率
+					resetEncodeBitrate(msg);
 				}
 			}
 
@@ -294,7 +297,7 @@ public class EncodeTask {
 
 		if(mHDEncoder != null) {
 			if(mFrameCount == 1) {
-				mHDEncoder.requestKeyFrame();
+				//mHDEncoder.requestKeyFrame();
 			}
 
 			mHDEncodeWindowSurface.makeCurrent();
@@ -313,7 +316,7 @@ public class EncodeTask {
 
 		if(mSimpleEncoder != null) {
 			if(mFrameCount == 1 /*|| mFrameCount%10 == 0*/) {
-				mSimpleEncoder.requestKeyFrame();
+				//mSimpleEncoder.requestKeyFrame();
 			}
 
 			// 切到当前egl环境
@@ -334,6 +337,17 @@ public class EncodeTask {
 
 			Logger.i("lidechen_test", "test3");
 			//mEncodeWindowSurface.readImageTest();
+		}
+	}
+
+	void resetEncodeBitrate(CodecMsg msg){
+
+		mEncodeInfo.bitrate = msg.encodeInfo.bitrate;
+		if(mSimpleEncoder != null){
+			mSimpleEncoder.changeBitrate(mEncodeInfo.bitrate);
+		}
+		if(mHDEncoder != null){
+			mSimpleEncoder.changeBitrate(mEncodeInfo.bitrate);
 		}
 	}
 
@@ -359,6 +373,14 @@ public class EncodeTask {
 
 		CodecMsg codecMsg = new CodecMsg();
 		codecMsg.currentMsg = msg;
+		mMsgQueue.addFirst(codecMsg);
+	}
+
+	public void changeBitrate(int bitrate){
+
+		CodecMsg codecMsg = new CodecMsg();
+		codecMsg.currentMsg = CodecMsg.MSG.MSG_ENCODE_CHANGE_BITRATE;
+		codecMsg.encodeInfo.bitrate = bitrate;
 		mMsgQueue.addFirst(codecMsg);
 	}
 

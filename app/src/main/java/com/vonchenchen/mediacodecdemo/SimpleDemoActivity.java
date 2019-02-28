@@ -53,6 +53,8 @@ public class SimpleDemoActivity extends Activity{
     private RadioGroup mResolutionRG;
     private EditText mFpsEdit;
 
+    private String mCurrentRecVideoPath = "";
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -78,7 +80,8 @@ public class SimpleDemoActivity extends Activity{
                     mIsStartPlay = true;
 
                     //h264读取并解码线程
-                    String inputPathAvc = "/sdcard/test.h264";
+                    //String inputPathAvc = "/sdcard/test.h264";
+                    String inputPathAvc = mCurrentRecVideoPath;
                     mDecodeH264Task = new DecodeTask(inputPathAvc);
                     mDecodeH264Task.setDecodeTaskEventListener(new DecodeTask.DecodeTaskEventListener() {
                         @Override
@@ -115,7 +118,7 @@ public class SimpleDemoActivity extends Activity{
 
                     CameraManager.CamSizeDetailInfo info = CameraManager.getInstance().getCamSize(mCurrentSize);
 
-                    //码率模式
+                    //码率
                     String bitRateStr = mBitrateEdit.getText().toString().trim();
                     if(TextUtils.isEmpty(bitRateStr)){
                         mEncodeInfo.bitrate = 0;
@@ -145,7 +148,9 @@ public class SimpleDemoActivity extends Activity{
                             bitRateName = mEncodeInfo.bitrate+"";
                         }
 
-                        mMediaDataWriter = new MediaDataWriter("/sdcard/test_bitrate_"+bitRateName+"_encode_"+fpsStr+".h264");
+                        mCurrentRecVideoPath = "/sdcard/test_bitrate_"+bitRateName+"_encode_"+fpsStr+".h264";
+
+                        mMediaDataWriter = new MediaDataWriter(mCurrentRecVideoPath);
                     } catch (FileNotFoundException e) {
                         e.printStackTrace();
                     }
@@ -274,6 +279,22 @@ public class SimpleDemoActivity extends Activity{
 
                 CameraManager.getInstance().closeCamera();
                 CameraManager.getInstance().openCamera(0, mCurrentSize, mFps);
+            }
+        });
+
+        findViewById(R.id.btn_refresh_bitrate).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                //码率
+                String bitRateStr = mBitrateEdit.getText().toString().trim();
+                if(TextUtils.isEmpty(bitRateStr)){
+                    mEncodeInfo.bitrate = 0;
+                }else{
+                    mEncodeInfo.bitrate = Integer.parseInt(bitRateStr) * 1000;
+                }
+
+                mVideoEncoderWrapper.changeBitrate(mEncodeInfo.bitrate);
             }
         });
 

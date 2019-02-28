@@ -8,6 +8,9 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="horizontal">
+        <ScrollView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
         <LinearLayout
             android:layout_width="400dp"
             android:layout_height="match_parent"
@@ -96,12 +99,12 @@
                         android:id="@+id/rb_480p"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:checked="true"
-                        android:text="360p" />
+                        android:text="480p" />
                     <RadioButton
                         android:id="@+id/rb_720p"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
+                        android:checked="true"
                         android:text="720p"/>
                     <RadioButton
                         android:id="@+id/rb_1080p"
@@ -115,16 +118,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="bitrate"/>
-                <EditText
-                    android:id="@+id/et_bitrate"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:text="200"/>
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -138,15 +132,40 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="fps"/>
+                    android:text="framerate"/>
                 <EditText
                     android:id="@+id/et_fps"
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
                     android:text="20"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="fps"/>
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="bitrate"/>
+                <EditText
+                    android:id="@+id/et_bitrate"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="800"/>
+                <Button
+                    android:id="@+id/btn_refresh_bitrate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="refresh bitrate"/>
             </LinearLayout>
         </LinearLayout>
+        </ScrollView>
     </LinearLayout>
 
 </RelativeLayout>

@@ -68,6 +68,10 @@ public class VideoEncoderWrapper {
         mEncodeTask.startEncodeTask();
     }
 
+    public void changeBitrate(int bitrate){
+        mEncodeTask.changeBitrate(bitrate);
+    }
+
     public SurfaceTexture getCameraTexture(){
         return mEncodeTask.getCameraTexture();
     }
