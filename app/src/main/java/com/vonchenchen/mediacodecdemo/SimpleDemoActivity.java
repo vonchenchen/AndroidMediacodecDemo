@@ -6,17 +6,24 @@ import android.graphics.SurfaceTexture;
 import android.media.MediaFormat;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.text.TextUtils;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 
 import com.vonchenchen.mediacodecdemo.camera.CameraManager;
 import com.vonchenchen.mediacodecdemo.io.MediaDataWriter;
 import com.vonchenchen.mediacodecdemo.video.DecodeTask;
+import com.vonchenchen.mediacodecdemo.video.EncodeInfo;
 import com.vonchenchen.mediacodecdemo.video.VideoEncoderWrapper;
 
 import java.io.FileNotFoundException;
+
+import static android.media.MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR;
+import static android.media.MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR;
 
 public class SimpleDemoActivity extends Activity{
 
@@ -39,6 +46,13 @@ public class SimpleDemoActivity extends Activity{
     private CameraManager.CameraSize mCurrentSize = CameraManager.CameraSize.SIZE_720P;
     private int mFps = 20;
 
+    private EncodeInfo mEncodeInfo;
+    private RadioGroup mBitrateModeRG;
+    private EditText mBitrateEdit;
+    private EditText mIFrameIntervalEdit;
+    private RadioGroup mResolutionRG;
+    private EditText mFpsEdit;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -49,6 +63,12 @@ public class SimpleDemoActivity extends Activity{
         mStartRecordH264Btn = findViewById(R.id.btn_startRecord);
         mStartPlayH264Btn = findViewById(R.id.btn_startPlay);
         mFrameRateText = findViewById(R.id.tv_frameRate);
+
+        mBitrateModeRG = findViewById(R.id.rg_bitratemode);
+        mResolutionRG = findViewById(R.id.rg_resolution);
+        mFpsEdit = findViewById(R.id.et_fps);
+
+        mEncodeInfo = new EncodeInfo();
 
         mStartPlayH264Btn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -95,14 +115,43 @@ public class SimpleDemoActivity extends Activity{
 
                     CameraManager.CamSizeDetailInfo info = CameraManager.getInstance().getCamSize(mCurrentSize);
 
+                    //码率模式
+                    String bitRateStr = mBitrateEdit.getText().toString().trim();
+                    if(TextUtils.isEmpty(bitRateStr)){
+                        mEncodeInfo.bitrate = 0;
+                    }else{
+                        mEncodeInfo.bitrate = Integer.parseInt(bitRateStr) * 1000;
+                    }
+
+                    //关键帧间隔
+                    String keyFrameIntervalStr = mIFrameIntervalEdit.getText().toString().trim();
+                    if(TextUtils.isEmpty(keyFrameIntervalStr)){
+                        mEncodeInfo.keyFrameInterval = 0;
+                    }else {
+                        mEncodeInfo.keyFrameInterval = Integer.parseInt(keyFrameIntervalStr);
+                    }
+
+                    //编码帧率
+                    String fpsStr = mFpsEdit.getText().toString().trim();
+                    if(TextUtils.isEmpty(fpsStr)){
+
+                    }else {
+                        mFps = Integer.parseInt(fpsStr);
+                    }
+
                     try {
-                        mMediaDataWriter = new MediaDataWriter("/sdcard/test.h264");
+                        String bitRateName = "";
+                        if(mEncodeInfo.bitrate != 0){
+                            bitRateName = mEncodeInfo.bitrate+"";
+                        }
+
+                        mMediaDataWriter = new MediaDataWriter("/sdcard/test_bitrate_"+bitRateName+"_encode_"+fpsStr+".h264");
                     } catch (FileNotFoundException e) {
                         e.printStackTrace();
                     }
 
                     //开始编码
-                    mVideoEncoderWrapper.startEncode(mMainSurfaceView, info.width, info.height, mFps);
+                    mVideoEncoderWrapper.startEncode(mMainSurfaceView, info.width, info.height, mFps, mEncodeInfo);
 
                     mStartRecordH264Btn.setText("stopRecord");
                 }else{
@@ -200,6 +249,38 @@ public class SimpleDemoActivity extends Activity{
                 }
             }
         });
+
+        mBitrateModeRG.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup radioGroup, int i) {
+                if(i == R.id.rb_vbr){
+                    mEncodeInfo.bitrateMode = BITRATE_MODE_VBR;
+                }else if(i == R.id.rb_cbr){
+                    mEncodeInfo.bitrateMode = BITRATE_MODE_CBR;
+                }
+            }
+        });
+
+        mResolutionRG.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup radioGroup, int i) {
+                if(i == R.id.rb_480p){
+                    mCurrentSize = CameraManager.CameraSize.SIZE_480P;
+                }else if(i == R.id.rb_720p){
+                    mCurrentSize = CameraManager.CameraSize.SIZE_720P;
+                }else if(i == R.id.rb_1080p){
+                    mCurrentSize = CameraManager.CameraSize.SIZE_1080P;
+                }
+
+                CameraManager.getInstance().closeCamera();
+                CameraManager.getInstance().openCamera(0, mCurrentSize, mFps);
+            }
+        });
+
+        mBitrateEdit = findViewById(R.id.et_bitrate);
+        mIFrameIntervalEdit = findViewById(R.id.et_iframeInterval);
+
+        mFpsEdit.setText(mFps+"");
 
         CameraManager.getInstance().closeCamera();
         CameraManager.getInstance().openCamera(0, mCurrentSize, mFps);

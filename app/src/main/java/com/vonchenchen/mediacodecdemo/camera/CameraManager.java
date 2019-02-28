@@ -264,6 +264,7 @@ public class CameraManager {
     }
 
     public enum CameraSize{
+        SIZE_360P,
         SIZE_480P,
         SIZE_720P,
         SIZE_1080P,

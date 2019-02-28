@@ -35,6 +35,8 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 
+import static android.media.MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR;
+
 /**
  * Encodes video in a fixed-size circular buffer.
  * <p>
@@ -69,6 +71,8 @@ public class SimpleEncoder {
     private long mRecTs;
     private int mFrameCount = 0;
 
+    private EncodeInfo mEncodeInfo;
+
     /**
      * Configures encoder, and prepares the input Surface.
      *
@@ -79,12 +83,12 @@ public class SimpleEncoder {
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
     public SimpleEncoder(int width, int height, int frameRate)
     		throws IOException {
-        this(width , height , frameRate , VIDEO_MIME_TYPE, true);
+        this(width , height , frameRate , VIDEO_MIME_TYPE, true, null);
 
     }
 
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-    public SimpleEncoder(int width, int height, int frameRate , String mimeType, boolean hd) {
+    public SimpleEncoder(int width, int height, int frameRate , String mimeType, boolean hd, EncodeInfo encodeInfo) {
         mHDBuffer = hd;
         // The goal is to size the buffer so that we can accumulate N seconds worth of video,
         // where N is passed in as "desiredSpanSec".  If the codec generates data at roughly
@@ -101,6 +105,8 @@ public class SimpleEncoder {
         mVideoWidth = width;
         mVideoHeight = height;
         mFrameRate = frameRate;
+
+        mEncodeInfo = encodeInfo;
 
         mVideoEncoder = createVideoEncoder();
         mInputSurface = mVideoEncoder.createInputSurface();
@@ -143,13 +149,30 @@ public class SimpleEncoder {
 		MediaFormat format = MediaFormat.createVideoFormat(VIDEO_MIME_TYPE, mVideoWidth, mVideoHeight);
 
         format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
-        format.setInteger(MediaFormat.KEY_BIT_RATE, getBitrate());
+
+        if(mEncodeInfo != null && mEncodeInfo.bitrate != 0){
+            format.setInteger(MediaFormat.KEY_BIT_RATE, mEncodeInfo.bitrate);
+        }else {
+            format.setInteger(MediaFormat.KEY_BIT_RATE, getBitrate());
+        }
+
         format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, mVideoWidth * mVideoHeight);
         format.setInteger(MediaFormat.KEY_FRAME_RATE, mFrameRate);
-        format.setInteger("bitrate-mode" , 2);
+
+        if(mEncodeInfo != null && mEncodeInfo.bitrateMode != 0){
+            format.setInteger("bitrate-mode", mEncodeInfo.bitrateMode);
+        }else {
+            format.setInteger("bitrate-mode", BITRATE_MODE_CBR);
+        }
+
         format.setInteger(MediaFormat.KEY_PROFILE , MediaCodecInfo.CodecProfileLevel.AVCProfileHigh);
         format.setInteger("level" , MediaCodecInfo.CodecProfileLevel.AVCLevel31);
-        format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, I_FRAME_INTERVAL);
+
+        if(mEncodeInfo != null && mEncodeInfo.keyFrameInterval != 0){
+            format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, mEncodeInfo.keyFrameInterval);
+        }else {
+            format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, I_FRAME_INTERVAL);
+        }
 
         // Create a MediaCodec encoder, and configure it with our format.  Get a Surface
         // we can use for input and wrap it with a class that handles the EGL work.

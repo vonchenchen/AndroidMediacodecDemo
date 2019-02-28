@@ -39,10 +39,10 @@ public class DecodeWrapper {
 
     public void release(){
 
-        if(mDecodeSurface != null) {
-            mDecodeSurface.release();
-            mDecodeSurface = null;
-        }
+//        if(mDecodeSurface != null) {
+//            mDecodeSurface.release();
+//            mDecodeSurface = null;
+//        }
 
         if(mSimpleDecoder != null) {
             mSimpleDecoder.close();

@@ -57,6 +57,9 @@ public class SimpleDecoder {
 
             MediaFormat format = MediaFormat.createVideoFormat(mMediaFormatType, mWidth, mHeight);
             format.setInteger(MediaFormat.KEY_PUSH_BLANK_BUFFERS_ON_STOP, 1);
+            //分辨率可以避免一些情况下长宽比渲染异常的情况
+            format.setInteger(MediaFormat.KEY_MAX_HEIGHT, 1920);
+            format.setInteger(MediaFormat.KEY_MAX_WIDTH, 1080);
             mMediaCodec = MediaCodec.createDecoderByType(mMediaFormatType);
             mMediaCodec.configure(format, mSurface, null, 0);
             mMediaCodec.start();

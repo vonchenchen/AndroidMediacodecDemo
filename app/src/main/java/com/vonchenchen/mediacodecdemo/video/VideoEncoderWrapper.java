@@ -22,7 +22,7 @@ public class VideoEncoderWrapper {
      * @param height   图像高度
      * @param frameRate
      */
-    public void startEncode(SurfaceView surfaceView, int width, int height, int frameRate){
+    public void startEncode(SurfaceView surfaceView, int width, int height, int frameRate, EncodeInfo encodeInfo){
 
         mEncodeTask = new EncodeTask(surfaceView, width, height, frameRate, new SimpleEncoder.OnCricularEncoderEventListener() {
             @Override
@@ -62,6 +62,8 @@ public class VideoEncoderWrapper {
                 }
             }
         });
+
+        mEncodeTask.setEncodeInfo(encodeInfo);
 
         mEncodeTask.startEncodeTask();
     }

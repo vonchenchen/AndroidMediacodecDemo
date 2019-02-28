@@ -111,6 +111,10 @@ public class RenderTask {
                     mRenderSurfaceHolder.addCallback(mHolderCallback);
                     releaseRender();
 
+                    //lidechen_test 测试重建解码器 如果关键帧差距过大会导致黑屏
+                    //mDecodeWrapper.release();
+                    //mDecodeWrapper = null;
+
                 }else if(msg.currentMsg == CodecMsg.MSG.MSG_DECODE_FRAME_READY){
 
                     Logger.d(TAG, "[onPipeRecv] MSG_DECODE_FRAME_READY");
@@ -219,7 +223,9 @@ public class RenderTask {
             //监听MediaCodec解码数据到 mDecodeSurfaceTexture
             //使用SurfaceTexture创建一个解码Surface
             mDecodeSurface = new Surface(mDecodeSurfaceTexture);
+        }
 
+        if(mDecodeWrapper == null) {
             mDecodeWrapper = new DecodeWrapper();
             mDecodeWrapper.init(mCurrentFrameWidth, mCurrentFrameHeight, mDecodeSurface, mMediaFormatType);
             mDecodeWrapper.setOnDecoderEnventLisetener(new SimpleDecoder.OnDecoderEnventLisetener() {

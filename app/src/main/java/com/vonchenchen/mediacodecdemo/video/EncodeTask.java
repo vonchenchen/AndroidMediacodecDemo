@@ -72,6 +72,8 @@ public class EncodeTask {
 	private SimpleEncoder mSimpleEncoder;
 	private SimpleEncoder mHDEncoder;
 
+	private EncodeInfo mEncodeInfo;
+
 	private SurfaceHolder mSurfaceHolder;
 	private int mFrameCount = 0;
 
@@ -114,6 +116,14 @@ public class EncodeTask {
 		mFrameRate = frameRate;
 
 		mOnCricularEncoderEventListener = listener;
+	}
+
+	/**
+	 * 设置
+	 * @param encodeInfo
+	 */
+	public void setEncodeInfo(EncodeInfo encodeInfo){
+		mEncodeInfo = encodeInfo;
 	}
 
 	public void startEncodeTask(){
@@ -217,7 +227,7 @@ public class EncodeTask {
 			mStreamWidth = mCaptureWidth;
 			mStreamHeight = mCaptureHeight;
 
-			mSimpleEncoder = new SimpleEncoder(mStreamWidth, mStreamHeight, mFrameRate, MediaFormat.MIMETYPE_VIDEO_AVC, true);
+			mSimpleEncoder = new SimpleEncoder(mStreamWidth, mStreamHeight, mFrameRate, MediaFormat.MIMETYPE_VIDEO_AVC, true, mEncodeInfo);
 			mSimpleEncoder.setOnCricularEncoderEventListener(mOnCricularEncoderEventListener);
 			//getInputSurface()最终获取的是MediaCodec调用createInputSurface()方法创建的Surface
 			//这个Surface传入当前egl环境 作为egl的窗口参数(win) 通过eglCreateWindowSurface与egldisplay进行关联
