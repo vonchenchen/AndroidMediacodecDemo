@@ -65,10 +65,20 @@ public class SimpleEncoder {
     private Surface mInputSurface;
     private MediaCodec mVideoEncoder;
     private int mVideoWidth, mVideoHeight;
+
+    /** 给定编码器编码帧率 */
     private int mFrameRate;
+    /** 当前给定帧率 */
+    private int mTargetFrameRate;
+    /** 当前每秒需要丢多少帧 */
+    private int mCurrDropFramePerSec;
+
     private boolean mHDBuffer ;
 
     private long mRecTs;
+    private long mRecPerFrameTs;
+    /** 采集-编码 单帧耗时 */
+    private long mCurrFrameSpend;
     private int mFrameCount = 0;
 
     private EncodeInfo mEncodeInfo;
@@ -105,6 +115,8 @@ public class SimpleEncoder {
         mVideoWidth = width;
         mVideoHeight = height;
         mFrameRate = frameRate;
+        mTargetFrameRate = mFrameRate;
+        mCurrDropFramePerSec = 0;
 
         mEncodeInfo = encodeInfo;
 
@@ -275,6 +287,11 @@ public class SimpleEncoder {
         msg.what = VideoEncoderHandler.MSG_CHANGE_BITRATE;
         msg.arg1 = bitrate;
         handler.sendMessage(msg);
+    }
+
+    void changeFramerate(int framerate){
+        //更新给定目标帧率
+        mTargetFrameRate = framerate;
     }
 
 	/**
@@ -473,15 +490,21 @@ public class SimpleEncoder {
                             mOnCricularEncoderEventListener.onKeyFrameReceive(keyframe, keyframe.length, mVideoWidth, mVideoHeight);
                         }
 
-                        mFrameCount ++;
-                        long curr = System.currentTimeMillis();
-                        if(curr - mRecTs > 1000){
-                            if(mOnCricularEncoderEventListener != null){
-                                mOnCricularEncoderEventListener.onFrameRateReceive(mFrameCount);
-                            }
-                            mRecTs = curr;
-                            mFrameCount = 0;
-                        }
+                        updateFrameRate();
+//                        mFrameCount ++;
+//                        long curr = System.currentTimeMillis();
+//                        if(curr - mRecTs > 1000){
+//                            if(mOnCricularEncoderEventListener != null){
+//                                mOnCricularEncoderEventListener.onFrameRateReceive(mFrameCount);
+//                            }
+//                            mRecTs = curr;
+//                            mFrameCount = 0;
+//                        }
+
+//                        mCurrFrameSpend = curr - mRecPerFrameTs;
+//                        if(mCurrFrameSpend < 200){
+//
+//                        }
 
                     } else {
 
@@ -491,15 +514,17 @@ public class SimpleEncoder {
                             mOnCricularEncoderEventListener.onOtherFrameReceive(outData, outData.length, mVideoWidth, mVideoHeight);
                         }
 
-                        mFrameCount ++;
-                        long curr = System.currentTimeMillis();
-                        if(curr - mRecTs > 1000){
-                            if(mOnCricularEncoderEventListener != null){
-                                mOnCricularEncoderEventListener.onFrameRateReceive(mFrameCount);
-                            }
-                            mRecTs = curr;
-                            mFrameCount = 0;
-                        }
+                        updateFrameRate();
+
+//                        mFrameCount ++;
+//                        long curr = System.currentTimeMillis();
+//                        if(curr - mRecTs > 1000){
+//                            if(mOnCricularEncoderEventListener != null){
+//                                mOnCricularEncoderEventListener.onFrameRateReceive(mFrameCount);
+//                            }
+//                            mRecTs = curr;
+//                            mFrameCount = 0;
+//                        }
                     }
 
                     mVideoEncoder.releaseOutputBuffer(encoderStatus, false);
@@ -507,6 +532,24 @@ public class SimpleEncoder {
                         break;
                     }
                 }
+            }
+        }
+
+        private void updateFrameRate(){
+
+            mFrameCount ++;
+            long curr = System.currentTimeMillis();
+
+            if(curr - mRecTs > 1000){
+                if(mOnCricularEncoderEventListener != null){
+                    mOnCricularEncoderEventListener.onFrameRateReceive(mFrameCount);
+                }
+                if(mOnInnerEventListener != null){
+                    mOnInnerEventListener.onFrameRateReceive(mFrameCount);
+                }
+                mRecTs = curr;
+
+                mFrameCount = 0;
             }
         }
 
@@ -643,6 +686,16 @@ public class SimpleEncoder {
 
     public void setOnCricularEncoderEventListener(OnCricularEncoderEventListener onCricularEncoderEventListener){
         mOnCricularEncoderEventListener = onCricularEncoderEventListener;
+    }
+
+    private OnInnerEventListener mOnInnerEventListener;
+    public void setOnInnerEventListener(OnInnerEventListener onInnerEventListener){
+        mOnInnerEventListener = onInnerEventListener;
+    }
+
+    /** 编码器内部事件监听 用于编码器和编码线程间数据传递或反馈 */
+    public interface OnInnerEventListener{
+        void onFrameRateReceive(int frameRate);
     }
 
     public interface OnCricularEncoderEventListener{

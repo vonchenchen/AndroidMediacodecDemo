@@ -8,4 +8,6 @@ public class EncodeInfo {
     public int bitrate;
     /** 关键帧间隔 */
     public int keyFrameInterval;
+    /** 帧率 */
+    public int framerate;
 }

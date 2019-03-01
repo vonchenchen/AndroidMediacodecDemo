@@ -298,6 +298,29 @@ public class SimpleDemoActivity extends Activity{
             }
         });
 
+        findViewById(R.id.btn_drop_frame).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+
+            }
+        });
+
+        findViewById(R.id.btn_refresh_framerate).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                //更新编码帧率
+                String fpsStr = mFpsEdit.getText().toString().trim();
+                if(TextUtils.isEmpty(fpsStr)){
+
+                }else {
+                    mFps = Integer.parseInt(fpsStr);
+                }
+                mVideoEncoderWrapper.changeFramerate(mFps);
+            }
+        });
+
         mBitrateEdit = findViewById(R.id.et_bitrate);
         mIFrameIntervalEdit = findViewById(R.id.et_iframeInterval);
 

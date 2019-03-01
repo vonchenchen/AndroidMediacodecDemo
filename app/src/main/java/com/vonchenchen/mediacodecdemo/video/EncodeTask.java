@@ -21,6 +21,9 @@ public class EncodeTask {
 	static private final int MSG_FRAME_AVAILABLE = 1;
 	static private final int MSG_FINISH = 2;
 
+	/** 相机采集最大帧率 */
+	public static final int CAM_MAX_FRAME_RATE = 21;
+
 	private MsgPipe<CodecMsg> mMsgQueue;
 
 	/** 接收相机纹理 glGenTexture生成 */
@@ -59,7 +62,17 @@ public class EncodeTask {
 	private int mHDStreamWidth;
 	private int mHEStreamHeight;
 
-	private int mFrameRate;
+	/** 初始编码帧率 用于初始化编码器 */
+	private int mInitFrameRate;
+	/** 真实帧率 统计一秒内编码帧数 */
+	private int mRealFrameRate;
+
+	/** 丢帧计数器 */
+	private int mFrameSkipCnt = 0;
+	/** 丢帧间隔 */
+	private int mFrameSkipFrameGap = 0;
+	/** 目标帧率 设置目标帧率 达到调节帧率的效果 */
+	private int mTargetFrameRate;
 
 	private EglCore mEglCore;
 	/** 非高清编码surface Surface通过MediaCodec的createInputSurface创建 每个surface维护一个egl句柄
@@ -113,7 +126,9 @@ public class EncodeTask {
 			mSurfaceHeight = mRenderSurfaceView.getMeasuredHeight();
 		}
 
-		mFrameRate = frameRate;
+		mInitFrameRate = frameRate;
+		mFrameSkipFrameGap = mInitFrameRate;
+		mTargetFrameRate = mInitFrameRate;
 
 		mOnCricularEncoderEventListener = listener;
 	}
@@ -157,6 +172,9 @@ public class EncodeTask {
 				}else if(msg.currentMsg == CodecMsg.MSG.MSG_ENCODE_CHANGE_BITRATE){
 					//改变编码码率
 					resetEncodeBitrate(msg);
+				}else if(msg.currentMsg == CodecMsg.MSG.MSG_ENCODE_CHANGE_FRAMERATE){
+					//改变编码帧率
+					resetEncodeFramerate(msg);
 				}
 			}
 
@@ -230,8 +248,32 @@ public class EncodeTask {
 			mStreamWidth = mCaptureWidth;
 			mStreamHeight = mCaptureHeight;
 
-			mSimpleEncoder = new SimpleEncoder(mStreamWidth, mStreamHeight, mFrameRate, MediaFormat.MIMETYPE_VIDEO_AVC, true, mEncodeInfo);
+			mSimpleEncoder = new SimpleEncoder(mStreamWidth, mStreamHeight, mInitFrameRate, MediaFormat.MIMETYPE_VIDEO_AVC, true, mEncodeInfo);
 			mSimpleEncoder.setOnCricularEncoderEventListener(mOnCricularEncoderEventListener);
+			mSimpleEncoder.setOnInnerEventListener(new SimpleEncoder.OnInnerEventListener() {
+				@Override
+				public void onFrameRateReceive(int frameRate) {
+					//返回当前真实帧率
+					mRealFrameRate = frameRate;
+
+					//计算丢帧间隔 如果给定帧率小于等于最大帧率 说明在帧率控制范围内 开始控制帧率
+					if(mTargetFrameRate <= CAM_MAX_FRAME_RATE) {
+
+						if (mTargetFrameRate < mRealFrameRate) {
+							//目标帧率 小于真实帧率 需要增加丢帧数 增加丢帧频率 减小丢帧间隔
+							if(mFrameSkipFrameGap > 2) {
+								mFrameSkipFrameGap--;
+							}
+
+						}else if(mTargetFrameRate > mRealFrameRate){
+							//目标帧率 大于真实帧率 需要减少丢帧数 降低丢帧频率 增大丢帧间隔
+							if(mFrameSkipFrameGap < CAM_MAX_FRAME_RATE) {
+								mFrameSkipFrameGap++;
+							}
+						}
+					}
+				}
+			});
 			//getInputSurface()最终获取的是MediaCodec调用createInputSurface()方法创建的Surface
 			//这个Surface传入当前egl环境 作为egl的窗口参数(win) 通过eglCreateWindowSurface与egldisplay进行关联
 			mEncodeWindowSurface = new WindowSurface(mEglCore, mSimpleEncoder.getInputSurface(), true);
@@ -249,9 +291,6 @@ public class EncodeTask {
 	public SurfaceTexture getCameraTexture(){
 		return mCameraTexture;
 	}
-
-	/** 丢帧计数器 */
-	private int mFrameSkipCnt = 0;
 
 	private void renderAndEncode() {
         //Log.d(TAG, "drawFrame");
@@ -289,11 +328,12 @@ public class EncodeTask {
 
 		mFrameCount ++;
 
-		//丢帧
-//		mFrameSkipCnt++;
-//		if(mFrameSkipCnt % 2 == 0){
-//			return;
-//		}
+		mFrameSkipCnt++;
+
+		//实际丢帧处
+		if (mFrameSkipCnt != mFrameSkipFrameGap && mFrameSkipCnt % mFrameSkipFrameGap == 0) {
+			return;
+		}
 
 		if(mHDEncoder != null) {
 			if(mFrameCount == 1) {
@@ -340,6 +380,10 @@ public class EncodeTask {
 		}
 	}
 
+	/**
+	 * 重置编码码率
+	 * @param msg
+	 */
 	void resetEncodeBitrate(CodecMsg msg){
 
 		mEncodeInfo.bitrate = msg.encodeInfo.bitrate;
@@ -347,8 +391,25 @@ public class EncodeTask {
 			mSimpleEncoder.changeBitrate(mEncodeInfo.bitrate);
 		}
 		if(mHDEncoder != null){
-			mSimpleEncoder.changeBitrate(mEncodeInfo.bitrate);
+			mHDEncoder.changeBitrate(mEncodeInfo.bitrate);
 		}
+	}
+
+	/**
+	 * 重置编码帧率
+	 * @param msg
+	 */
+	void resetEncodeFramerate(CodecMsg msg){
+
+		mTargetFrameRate = msg.encodeInfo.framerate;
+
+//		mEncodeInfo.framerate = msg.encodeInfo.framerate;
+//		if(mSimpleEncoder != null){
+//			mSimpleEncoder.changeFramerate(mEncodeInfo.framerate);
+//		}
+//		if(mHDEncoder != null){
+//			mHDEncoder.changeFramerate(mEncodeInfo.framerate);
+//		}
 	}
 
 	private void releaseRender(){
@@ -381,6 +442,14 @@ public class EncodeTask {
 		CodecMsg codecMsg = new CodecMsg();
 		codecMsg.currentMsg = CodecMsg.MSG.MSG_ENCODE_CHANGE_BITRATE;
 		codecMsg.encodeInfo.bitrate = bitrate;
+		mMsgQueue.addFirst(codecMsg);
+	}
+
+	public void changeFramerate(int framerate){
+
+		CodecMsg codecMsg = new CodecMsg();
+		codecMsg.currentMsg = CodecMsg.MSG.MSG_ENCODE_CHANGE_FRAMERATE;
+		codecMsg.encodeInfo.framerate = framerate;
 		mMsgQueue.addFirst(codecMsg);
 	}
 

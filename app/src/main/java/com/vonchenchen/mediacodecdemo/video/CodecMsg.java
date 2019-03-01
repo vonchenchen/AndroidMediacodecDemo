@@ -23,7 +23,9 @@ public class CodecMsg {
         /** 结束编码任务 */
         MSG_ENCODE_STOP_TASK,
         /** 改变编码器参数 */
-        MSG_ENCODE_CHANGE_BITRATE;
+        MSG_ENCODE_CHANGE_BITRATE,
+        /** 改变编码帧率 */
+        MSG_ENCODE_CHANGE_FRAMERATE;
     }
 
     public CodecMsg(){
