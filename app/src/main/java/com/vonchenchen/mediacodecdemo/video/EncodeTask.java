@@ -259,6 +259,10 @@ public class EncodeTask {
 					//计算丢帧间隔 如果给定帧率小于等于最大帧率 说明在帧率控制范围内 开始控制帧率
 					if(mTargetFrameRate <= CAM_MAX_FRAME_RATE) {
 
+						if(Math.abs(mTargetFrameRate - mRealFrameRate) <= 2){
+							return;
+						}
+
 						if (mTargetFrameRate < mRealFrameRate) {
 							//目标帧率 小于真实帧率 需要增加丢帧数 增加丢帧频率 减小丢帧间隔
 							if(mFrameSkipFrameGap > 2) {
@@ -272,6 +276,7 @@ public class EncodeTask {
 							}
 						}
 					}
+
 				}
 			});
 			//getInputSurface()最终获取的是MediaCodec调用createInputSurface()方法创建的Surface
