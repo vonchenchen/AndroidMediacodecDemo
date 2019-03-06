@@ -281,7 +281,7 @@ public class SimpleEncoder {
         handler.sendMessage(handler.obtainMessage(VideoEncoderHandler.MSG_REQUEST_I_FRAME));
     }
 
-    void changeBitrate(int bitrate){
+    public void changeBitrate(int bitrate){
         Handler handler = mVideoEncoderThread.getHandler();
         Message msg = Message.obtain();
         msg.what = VideoEncoderHandler.MSG_CHANGE_BITRATE;

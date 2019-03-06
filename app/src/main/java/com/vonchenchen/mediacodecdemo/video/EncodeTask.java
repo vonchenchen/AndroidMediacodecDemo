@@ -245,8 +245,8 @@ public class EncodeTask {
 				mOnEncodeTaskEventListener.onCameraTextureReady(mCameraTexture);
 			}
 
-			mStreamWidth = mCaptureWidth;
-			mStreamHeight = mCaptureHeight;
+			mStreamWidth = mCaptureWidth;//2;
+			mStreamHeight = mCaptureHeight;//2;
 
 			mSimpleEncoder = new SimpleEncoder(mStreamWidth, mStreamHeight, mInitFrameRate, MediaFormat.MIMETYPE_VIDEO_AVC, true, mEncodeInfo);
 			mSimpleEncoder.setOnCricularEncoderEventListener(mOnCricularEncoderEventListener);
