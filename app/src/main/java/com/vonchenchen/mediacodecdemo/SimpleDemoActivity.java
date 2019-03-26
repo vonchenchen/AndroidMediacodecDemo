@@ -194,6 +194,7 @@ public class SimpleDemoActivity extends Activity{
             @Override
             public void onCameraTextureReady(SurfaceTexture camSurfaceTexture) {
 
+                //CameraManager.getInstance().openCamera(0, mCurrentSize, mFps);
                 CameraManager.getInstance().startCapture(camSurfaceTexture);
             }
 

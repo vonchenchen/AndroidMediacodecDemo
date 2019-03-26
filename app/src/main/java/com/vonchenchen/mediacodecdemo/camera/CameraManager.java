@@ -67,11 +67,11 @@ public class CameraManager {
         mSizeIndex = sizeIndex;
         mFps = fps;
 
-        //stopCapture();
-        if(mCamera != null){
-            mCamera.release();
-            mCamera = null;
-        }
+        stopCapture();
+//        if(mCamera != null){
+//            mCamera.release();
+//            mCamera = null;
+//        }
         mCamera = Camera.open(camIndex);
         if(mCamera == null){
             Logger.e(TAG,"[selectCamera] open camera error mCamIndex="+mCamIndex+" mSizeIndex="+mSizeIndex);
