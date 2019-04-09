@@ -217,8 +217,13 @@ public class EncodeTask {
 			return;
 		}
 
-		//封装egl与对应的surface
-		mRenderWindowSurface = new WindowSurface(mEglCore, mRenderSurface, false);
+		try {
+			//封装egl与对应的surface
+			mRenderWindowSurface = new WindowSurface(mEglCore, mRenderSurface, false);
+		}catch (Exception e){
+			Logger.printErrStackTrace(TAG, e, "create encode WindowSurface Exception:");
+			return;
+		}
 		mRenderWindowSurface.makeCurrent();
 
 		if(mInternalTexDrawer == null) {

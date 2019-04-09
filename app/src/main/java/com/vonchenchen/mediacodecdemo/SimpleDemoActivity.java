@@ -18,6 +18,7 @@ import com.vonchenchen.mediacodecdemo.camera.CameraManager;
 import com.vonchenchen.mediacodecdemo.io.MediaDataWriter;
 import com.vonchenchen.mediacodecdemo.video.DecodeTask;
 import com.vonchenchen.mediacodecdemo.video.EncodeInfo;
+import com.vonchenchen.mediacodecdemo.video.Logger;
 import com.vonchenchen.mediacodecdemo.video.VideoEncoderWrapper;
 
 import java.io.FileNotFoundException;
@@ -26,6 +27,8 @@ import static android.media.MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR;
 import static android.media.MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR;
 
 public class SimpleDemoActivity extends Activity{
+
+    private static final String TAG = "SimpleDemoActivity";
 
     private SurfaceView mMainSurfaceView;
     private Button mStartRecordH264Btn;
@@ -46,11 +49,14 @@ public class SimpleDemoActivity extends Activity{
     private CameraManager.CameraSize mCurrentSize = CameraManager.CameraSize.SIZE_720P;
     private int mFps = 20;
 
+    private int mCameraIndex = 0;
+
     private EncodeInfo mEncodeInfo;
     private RadioGroup mBitrateModeRG;
     private EditText mBitrateEdit;
     private EditText mIFrameIntervalEdit;
     private RadioGroup mResolutionRG;
+    private RadioGroup mCamIndexRG;
     private EditText mFpsEdit;
 
     private String mCurrentRecVideoPath = "";
@@ -68,6 +74,8 @@ public class SimpleDemoActivity extends Activity{
 
         mBitrateModeRG = findViewById(R.id.rg_bitratemode);
         mResolutionRG = findViewById(R.id.rg_resolution);
+        mCamIndexRG = findViewById(R.id.rg_camIndex);
+
         mFpsEdit = findViewById(R.id.et_fps);
 
         mEncodeInfo = new EncodeInfo();
@@ -195,6 +203,7 @@ public class SimpleDemoActivity extends Activity{
             public void onCameraTextureReady(SurfaceTexture camSurfaceTexture) {
 
                 //CameraManager.getInstance().openCamera(0, mCurrentSize, mFps);
+                Logger.i(TAG, "onCameraTextureReady");
                 CameraManager.getInstance().startCapture(camSurfaceTexture);
             }
 
@@ -279,7 +288,27 @@ public class SimpleDemoActivity extends Activity{
                 }
 
                 CameraManager.getInstance().closeCamera();
-                CameraManager.getInstance().openCamera(0, mCurrentSize, mFps);
+                CameraManager.getInstance().openCamera(mCameraIndex, mCurrentSize, mFps);
+            }
+        });
+
+        mCamIndexRG.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup radioGroup, int i) {
+
+                int index = mCameraIndex;
+                if(i == R.id.rb_cam0){
+
+                    index = 0;
+                }else if(i == R.id.rb_cam1){
+
+                    index = 1;
+                }
+
+                if(index != mCameraIndex){
+                    CameraManager.getInstance().closeCamera();
+                    CameraManager.getInstance().openCamera(mCameraIndex, mCurrentSize, mFps);
+                }
             }
         });
 
@@ -328,6 +357,12 @@ public class SimpleDemoActivity extends Activity{
         mFpsEdit.setText(mFps+"");
 
         CameraManager.getInstance().closeCamera();
-        CameraManager.getInstance().openCamera(0, mCurrentSize, mFps);
+        CameraManager.getInstance().openCamera(mCameraIndex, mCurrentSize, mFps);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        CameraManager.getInstance().closeCamera();
     }
 }

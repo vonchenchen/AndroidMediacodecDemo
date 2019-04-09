@@ -33,6 +33,7 @@ Opengl绘制相机图片。
 
 视频编码采用了自建SurfaceTexure的方式，直接使用自建纹理填入相机，主要实现流程在EncodeTask中。构造函数中传入相机需要渲染的SurfaceView，并监听其中SurfaceHolder的相应事件。这里还自建了一个MsgPipe，内部会开启一个线程，用于处理编码和渲染中的相关状态，包括资源的销毁和重新初始化，这里之所以开启线程还有一个考虑就是给Opengl提供线程。
 
+```java
 	public EncodeTask(SurfaceView surfaceView , int width , int height, int frameRate, SimpleEncoder.OnCricularEncoderEventListener listener) {
 
 		mMsgQueue = new MsgPipe<>();
@@ -53,6 +54,7 @@ Opengl绘制相机图片。
 		}
 		...
 	}
+```    
 
 初始化完毕后，会开启MsgPipe线程，等待相应消息。下面是消息对应的注释
 
@@ -71,7 +73,8 @@ Opengl绘制相机图片。
 
 根据外部给MsgPipe发送的消息，下面会逐条处理。
 
-	public void onPipeRecv(CodecMsg msg) {
+```java
+		public void onPipeRecv(CodecMsg msg) {
 
 				if(msg.currentMsg == CodecMsg.MSG.MSG_ENCODE_CAPTURE_FRAME_READY){
 
@@ -97,9 +100,11 @@ Opengl绘制相机图片。
 					resetEncodeFramerate(msg);
 				}
 			}
+```
 
 首先看一下initGL()函数，用来初始化当前线程的Opengl环境以及编码器相关参数，其中Egl和Opengl相关使用了Grafika中相关代码，目前为了保持视频比例增加了黑边填充相关绘制。下面简要描述一函数调用流程和相关变量的意义。
 
+```java
 	private void initGL() {
 
 		if(mEglCore == null) {
@@ -123,6 +128,7 @@ Opengl绘制相机图片。
 			...
 		}
 	}
+```    
 
 EglCore中封装了Egl相关，主要用于创建和存储Opengl上下文，这里只需要创建一次，推后台等情况也不需要销毁。WindowSurface封装了Egl与android中Surface绑定相关的操作，调用makeCurrent就可以把当前surface挂载到当前Egl环境，swapBuffers则将当前缓存中的内容交换到显示中，如果推后台导致surface失效，则需要重新创建。FullFrameRect中封装了Opengl的program相关，由其创建纹理，其在当前Egl环境下绘制纹理则会被显示到Egl对应的窗口中。
 
@@ -130,6 +136,7 @@ EglCore中封装了Egl相关，主要用于创建和存储Opengl上下文，这�
 
 前文在初始化的时候，创建了一个纹理，这个纹理被包装为Android的SurfaceTexture，创建完毕后将被设置给Camera作为Camera渲染的画布。
 
+```java
 	//使用纹理创建SurfaceTexture 用来接收相机数据
 			mCameraTexture = new SurfaceTexture(mTextureId);
 			//监听接收数据
@@ -142,9 +149,11 @@ EglCore中封装了Egl相关，主要用于创建和存储Opengl上下文，这�
 					mMsgQueue.addLast(codecMsg);
 				}
 			});
+```            
 
 当Camera填充完毕后，会触发一次onFrameAvailable，这时已经采集到了帧，我们发送一条消息给消息队列。这里首先调用updateTexImage方法读出图片，读完后相机将开始下一次采集。这样就可以在当前Egl环境下使用Opengl绘制前文创建的纹理，这个纹理的内容就是刚才相机画上去的东西。
 
+```java
 		mCameraTexture.updateTexImage();
 
         /********* draw to Capture Window **********/
@@ -165,8 +174,11 @@ EglCore中封装了Egl相关，主要用于创建和存储Opengl上下文，这�
 
 			mRenderWindowSurface.swapBuffers();
 		}
+```        
+        
 绘制完毕后，将接着使用这个纹理Id，将其绘制到编码器的画布上。MediaCodec作为编码器可以调用createInputSurface创建一个Surface，作为一块输入缓冲区。
 
+```java
 		mHDEncodeWindowSurface = new WindowSurface(mEglCore, mHDEncoder.getInputSurface(), true);
 		....
 
@@ -188,14 +200,15 @@ EglCore中封装了Egl相关，主要用于创建和存储Opengl上下文，这�
 			mHDEncodeWindowSurface.setPresentationTime(mCameraTexture.getTimestamp());
 			mHDEncodeWindowSurface.swapBuffers();
 		}
-
+```
 
 ### 3.视频解码及其渲染流程
 
 #### 3.1初始化
 解码类似编码，也做了一个消息队列，用来管理线程状态，避免推后台影响渲染。
 与编码不同，MediaCodec作为解码器，并没有提供输入surface，这里需要手动创建一个sueface，用作decode的缓冲区。这里利用FullFrameRect创建一个program并创建一个纹理Id，用这纹理Id创建一个SurfaceTexture，最终使用SurfaceTexture创建一个Surface，将这个Surface设置给MediaCodec作为解码缓存区。mRendererWindowSurface则是外部需要被渲染的Surface的封装，首先将这个surface挂到Egl环境上，用来初始化当前Egl环境。
-		
+
+```java
 	if(mEglCore == null){
             mEglCore = new EglCore(null, EglCore.FLAG_RECORDABLE);
         }
@@ -223,11 +236,14 @@ EglCore中封装了Egl相关，主要用于创建和存储Opengl上下文，这�
         }
 		....
         }
+```        
 
 #### 3.2解码与渲染
 
 当视频了流抛出时，首先利用上文创建的MediaCodec解码，解码完毕后给消息队列发送一条消息。由于上文已经将包装有自建纹理的Surface传入MediaCodec，这里解码后会直接将数据发送到Surface上。调用updateTexImage方法可以将当前数据读出，这样就可以按照Opengl绘制流程渲染解码出来的图片。
 	
+```java
+
     private int renderToRenderSurface(){
 
         mDecodeSurfaceTexture.updateTexImage();
@@ -246,6 +262,7 @@ EglCore中封装了Egl相关，主要用于创建和存储Opengl上下文，这�
         mRendererWindowSurface.swapBuffers();
         return 0;
     }
+```    
 
 ### 4.其他问题
 

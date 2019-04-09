@@ -112,6 +112,25 @@
                         android:layout_height="match_parent"
                         android:text="1080p"/>
                 </RadioGroup>
+
+                <RadioGroup
+                    android:id="@+id/rg_camIndex"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content" >
+                    <RadioButton
+                        android:id="@+id/rb_cam0"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:checked="true"
+                        android:text="cam0" />
+                    <RadioButton
+                        android:id="@+id/rb_cam1"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:checked="false"
+                        android:text="cam1"/>
+                </RadioGroup>
             </LinearLayout>
 
             <LinearLayout

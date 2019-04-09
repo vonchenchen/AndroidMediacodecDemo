@@ -117,7 +117,7 @@ public class CameraManager {
         }
 
         camera.setParameters(parameters);
-        camera.setPreviewCallback(sCallback);
+        //camera.setPreviewCallback(sCallback);
     }
 
     public List<Camera.Size> getCamSizeList(){
