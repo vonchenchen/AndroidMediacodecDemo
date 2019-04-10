@@ -1,5 +1,7 @@
 package com.vonchenchen.mediacodecdemo.video;
 
+import android.media.MediaCodecInfo;
+
 public class EncodeInfo {
 
     /** 码率模式 */
@@ -10,4 +12,10 @@ public class EncodeInfo {
     public int keyFrameInterval;
     /** 帧率 */
     public int framerate;
+    /** profile */
+    public int profile;
+
+    public EncodeInfo(){
+        profile = MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline;
+    }
 }

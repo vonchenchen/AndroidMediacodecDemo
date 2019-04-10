@@ -28,6 +28,9 @@ import android.os.Looper;
 import android.os.Message;
 import android.view.Surface;
 
+import com.vonchenchen.mediacodecdemo.video.statistics.StatUtils;
+import com.vonchenchen.mediacodecdemo.video.statistics.StatisticsData;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -36,6 +39,7 @@ import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 
 import static android.media.MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR;
+import static com.vonchenchen.mediacodecdemo.video.statistics.StatUtils.getCpuRate;
 
 /**
  * Encodes video in a fixed-size circular buffer.
@@ -79,7 +83,11 @@ public class SimpleEncoder {
     private long mRecPerFrameTs;
     /** 采集-编码 单帧耗时 */
     private long mCurrFrameSpend;
-    private int mFrameCount = 0;
+
+    /** 当前实际帧率 */
+    private int mStatFrameCount = 0;
+    /** 当前实际码率 */
+    private int mStatBitrate = 0;
 
     private EncodeInfo mEncodeInfo;
 
@@ -185,7 +193,7 @@ public class SimpleEncoder {
             format.setInteger("bitrate-mode", BITRATE_MODE_CBR);
         }
 
-        format.setInteger(MediaFormat.KEY_PROFILE , MediaCodecInfo.CodecProfileLevel.AVCProfileHigh);
+        format.setInteger(MediaFormat.KEY_PROFILE , mEncodeInfo.profile);
         format.setInteger("level" , MediaCodecInfo.CodecProfileLevel.AVCLevel31);
 
         if(mEncodeInfo != null && mEncodeInfo.keyFrameInterval != 0){
@@ -484,47 +492,27 @@ public class SimpleEncoder {
                             Logger.v(TAG , "OnEncodedData BUFFER_FLAG_SYNC_FRAME " + keyframe.length);
                         }
 
-                        Logger.d(TAG, "drainVideoEncoder CODEC_SYNC_FRAME: "+ toString(keyframe));
+                        //Logger.d(TAG, "drainVideoEncoder CODEC_SYNC_FRAME: "+ toString(keyframe));
 
                         if(mOnCricularEncoderEventListener != null){
                             mOnCricularEncoderEventListener.onKeyFrameReceive(keyframe, keyframe.length, mVideoWidth, mVideoHeight);
                         }
 
-                        updateFrameRate();
-//                        mFrameCount ++;
-//                        long curr = System.currentTimeMillis();
-//                        if(curr - mRecTs > 1000){
-//                            if(mOnCricularEncoderEventListener != null){
-//                                mOnCricularEncoderEventListener.onFrameRateReceive(mFrameCount);
-//                            }
-//                            mRecTs = curr;
-//                            mFrameCount = 0;
-//                        }
+                        mStatBitrate += keyframe.length;
 
-//                        mCurrFrameSpend = curr - mRecPerFrameTs;
-//                        if(mCurrFrameSpend < 200){
-//
-//                        }
+                        updateEncodeStatistics();
 
                     } else {
 
-                        Logger.d(TAG, "drainVideoEncoder P_FRAME: "+ toString(outData));
+                        //Logger.d(TAG, "drainVideoEncoder P_FRAME: "+ toString(outData));
 
                         if(mOnCricularEncoderEventListener != null){
                             mOnCricularEncoderEventListener.onOtherFrameReceive(outData, outData.length, mVideoWidth, mVideoHeight);
                         }
 
-                        updateFrameRate();
+                        mStatBitrate += outData.length;
 
-//                        mFrameCount ++;
-//                        long curr = System.currentTimeMillis();
-//                        if(curr - mRecTs > 1000){
-//                            if(mOnCricularEncoderEventListener != null){
-//                                mOnCricularEncoderEventListener.onFrameRateReceive(mFrameCount);
-//                            }
-//                            mRecTs = curr;
-//                            mFrameCount = 0;
-//                        }
+                        updateEncodeStatistics();
                     }
 
                     mVideoEncoder.releaseOutputBuffer(encoderStatus, false);
@@ -535,21 +523,29 @@ public class SimpleEncoder {
             }
         }
 
-        private void updateFrameRate(){
+        private void updateEncodeStatistics(){
 
-            mFrameCount ++;
+            mStatFrameCount++;
             long curr = System.currentTimeMillis();
 
             if(curr - mRecTs > 1000){
+
+                StatisticsData statisticsData = new StatisticsData();
+                statisticsData.setFrameRate(mStatFrameCount);
+                statisticsData.setBitrate(mStatBitrate);
+
+                //StatUtils.getCpuRate();
+
                 if(mOnCricularEncoderEventListener != null){
-                    mOnCricularEncoderEventListener.onFrameRateReceive(mFrameCount);
+                    mOnCricularEncoderEventListener.onStatisticsUpdate(statisticsData);
                 }
                 if(mOnInnerEventListener != null){
-                    mOnInnerEventListener.onFrameRateReceive(mFrameCount);
+                    mOnInnerEventListener.onFrameRateReceive(mStatFrameCount);
                 }
                 mRecTs = curr;
 
-                mFrameCount = 0;
+                mStatFrameCount = 0;
+                mStatBitrate = 0;
             }
         }
 
@@ -702,6 +698,6 @@ public class SimpleEncoder {
         void onConfigFrameReceive(byte[] data, int length, int frameWidth, int frameHeight);
         void onKeyFrameReceive(byte[] data, int length, int frameWidth, int frameHeight);
         void onOtherFrameReceive(byte[] data, int length, int frameWidth, int frameHeight);
-        void onFrameRateReceive(int frameRate);
+        void onStatisticsUpdate(StatisticsData statisticsData);
     }
 }

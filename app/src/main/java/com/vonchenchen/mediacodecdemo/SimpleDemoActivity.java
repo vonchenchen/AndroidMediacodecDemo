@@ -3,8 +3,11 @@ package com.vonchenchen.mediacodecdemo;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.SurfaceTexture;
+import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
 import android.view.SurfaceView;
@@ -20,6 +23,7 @@ import com.vonchenchen.mediacodecdemo.video.DecodeTask;
 import com.vonchenchen.mediacodecdemo.video.EncodeInfo;
 import com.vonchenchen.mediacodecdemo.video.Logger;
 import com.vonchenchen.mediacodecdemo.video.VideoEncoderWrapper;
+import com.vonchenchen.mediacodecdemo.video.statistics.StatisticsData;
 
 import java.io.FileNotFoundException;
 
@@ -30,7 +34,13 @@ public class SimpleDemoActivity extends Activity{
 
     private static final String TAG = "SimpleDemoActivity";
 
+    private static final int MSG_DISPLAY_I_FRAME_TIME = 1;
+
     private SurfaceView mMainSurfaceView;
+
+    private SurfaceView mBigSurfaceView;
+    private SurfaceView mSmallSurfaceView;
+
     private Button mStartRecordH264Btn;
     private Button mStartPlayH264Btn;
     private Button mStartPlayVp8Btn;
@@ -57,9 +67,30 @@ public class SimpleDemoActivity extends Activity{
     private EditText mIFrameIntervalEdit;
     private RadioGroup mResolutionRG;
     private RadioGroup mCamIndexRG;
+    private RadioGroup mProfileRG;
     private EditText mFpsEdit;
 
     private String mCurrentRecVideoPath = "";
+    private EditText mPlayPathEdit;
+    private Button mSwitchViewBtn;
+    private Button mRequestKeyFrameBtn;
+    private TextView mRequestKeyFrameSpendText;
+
+    /** 开始发出请求关键帧时间戳 */
+    private long mStartRequestKeyFrameTs = 0;
+    /** 接收到关键帧时间戳 */
+    private long mEndRequestKeyFrameTs = 0;
+
+    private Handler mHandler = new Handler(){
+        @Override
+        public void handleMessage(Message msg) {
+
+            if(msg.what == MSG_DISPLAY_I_FRAME_TIME){
+
+                mRequestKeyFrameSpendText.setText((long)msg.obj+"ms");
+            }
+        }
+    };
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -67,7 +98,15 @@ public class SimpleDemoActivity extends Activity{
 
         setContentView(R.layout.activity_simpledemo);
 
-        mMainSurfaceView = findViewById(R.id.surface_main);
+        mPlayPathEdit = findViewById(R.id.tv_play_path);
+
+        //手机测试
+        mSmallSurfaceView = findViewById(R.id.surface_main);
+        //大屏测试
+        mBigSurfaceView = findViewById(R.id.sv_big);
+
+        mMainSurfaceView = mBigSurfaceView;
+
         mStartRecordH264Btn = findViewById(R.id.btn_startRecord);
         mStartPlayH264Btn = findViewById(R.id.btn_startPlay);
         mFrameRateText = findViewById(R.id.tv_frameRate);
@@ -75,8 +114,13 @@ public class SimpleDemoActivity extends Activity{
         mBitrateModeRG = findViewById(R.id.rg_bitratemode);
         mResolutionRG = findViewById(R.id.rg_resolution);
         mCamIndexRG = findViewById(R.id.rg_camIndex);
+        mProfileRG = findViewById(R.id.rg_profile);
 
         mFpsEdit = findViewById(R.id.et_fps);
+
+        mSwitchViewBtn = findViewById(R.id.btn_switchView);
+        mRequestKeyFrameBtn = findViewById(R.id.btn_request_keyframe);
+        mRequestKeyFrameSpendText = findViewById(R.id.tv_request_key_frame_spend);
 
         mEncodeInfo = new EncodeInfo();
 
@@ -89,7 +133,10 @@ public class SimpleDemoActivity extends Activity{
 
                     //h264读取并解码线程
                     //String inputPathAvc = "/sdcard/test.h264";
-                    String inputPathAvc = mCurrentRecVideoPath;
+
+                    String inputPathAvc = mPlayPathEdit.getText().toString().trim();
+                    //String inputPathAvc = mCurrentRecVideoPath;
+
                     mDecodeH264Task = new DecodeTask(inputPathAvc);
                     mDecodeH264Task.setDecodeTaskEventListener(new DecodeTask.DecodeTaskEventListener() {
                         @Override
@@ -157,6 +204,7 @@ public class SimpleDemoActivity extends Activity{
                         }
 
                         mCurrentRecVideoPath = "/sdcard/test_bitrate_"+bitRateName+"_encode_"+fpsStr+".h264";
+                        mPlayPathEdit.setText(mCurrentRecVideoPath);
 
                         mMediaDataWriter = new MediaDataWriter(mCurrentRecVideoPath);
                     } catch (FileNotFoundException e) {
@@ -190,11 +238,11 @@ public class SimpleDemoActivity extends Activity{
         mVideoEncoderWrapper = new VideoEncoderWrapper();
         mVideoEncoderWrapper.setOnVideoEncodeEventListener(new VideoEncoderWrapper.OnVideoEncodeEventListener() {
             @Override
-            public void onEncodeFrameRate(final int frameRate) {
+            public void onStatisticsUpdate(final StatisticsData statisticsData) {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        mFrameRateText.setText("framerate="+frameRate);
+                        mFrameRateText.setText(statisticsData.toString());
                     }
                 });
             }
@@ -215,6 +263,18 @@ public class SimpleDemoActivity extends Activity{
 
             @Override
             public void onKeyFrameRecv(byte[] data, int length, int videoWidth, int videoHeight) {
+
+                if(mStartRequestKeyFrameTs != 0){
+                    mEndRequestKeyFrameTs = System.currentTimeMillis();
+
+                    Message message = Message.obtain();
+                    message.what = MSG_DISPLAY_I_FRAME_TIME;
+                    message.obj = (mEndRequestKeyFrameTs - mStartRequestKeyFrameTs);
+
+                    mHandler.sendMessage(message);
+
+                    mStartRequestKeyFrameTs = 0;
+                }
 
                 mMediaDataWriter.write(data, length);
             }
@@ -312,6 +372,23 @@ public class SimpleDemoActivity extends Activity{
             }
         });
 
+        mProfileRG.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup radioGroup, int i) {
+
+                if(i == R.id.rb_baseline){
+
+                    mEncodeInfo.profile = MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline;
+                }else if(i == R.id.rb_main){
+
+                    mEncodeInfo.profile = MediaCodecInfo.CodecProfileLevel.AVCProfileMain;
+                }else if(i == R.id.rb_high){
+
+                    mEncodeInfo.profile = MediaCodecInfo.CodecProfileLevel.AVCProfileHigh;
+                }
+            }
+        });
+
         findViewById(R.id.btn_refresh_bitrate).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -348,6 +425,28 @@ public class SimpleDemoActivity extends Activity{
                     mFps = Integer.parseInt(fpsStr);
                 }
                 mVideoEncoderWrapper.changeFramerate(mFps);
+            }
+        });
+
+        mSwitchViewBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                if(mMainSurfaceView == mBigSurfaceView){
+                    mMainSurfaceView = mSmallSurfaceView;
+                }else {
+                    mMainSurfaceView = mBigSurfaceView;
+                }
+            }
+        });
+
+        mRequestKeyFrameBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                mStartRequestKeyFrameTs = System.currentTimeMillis();
+
+                mVideoEncoderWrapper.requestKeyFrame();
             }
         });
 

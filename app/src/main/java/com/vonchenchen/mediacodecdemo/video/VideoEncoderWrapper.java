@@ -3,6 +3,8 @@ package com.vonchenchen.mediacodecdemo.video;
 import android.graphics.SurfaceTexture;
 import android.view.SurfaceView;
 
+import com.vonchenchen.mediacodecdemo.video.statistics.StatisticsData;
+
 /**
  * Created by vonchenchen on 2018/4/15.
  */
@@ -47,9 +49,9 @@ public class VideoEncoderWrapper {
             }
 
             @Override
-            public void onFrameRateReceive(int frameRate) {
+            public void onStatisticsUpdate(StatisticsData statisticsData) {
                 if(mOnVideoEncodeEventListener != null){
-                    mOnVideoEncodeEventListener.onEncodeFrameRate(frameRate);
+                    mOnVideoEncodeEventListener.onStatisticsUpdate(statisticsData);
                 }
             }
         });
@@ -76,6 +78,10 @@ public class VideoEncoderWrapper {
         mEncodeTask.changeFramerate(framerate);
     }
 
+    public void requestKeyFrame(){
+        mEncodeTask.requestKeyFrame();
+    }
+
     public SurfaceTexture getCameraTexture(){
         return mEncodeTask.getCameraTexture();
     }
@@ -96,7 +102,7 @@ public class VideoEncoderWrapper {
          * 编码帧率
          * @param frameRate
          */
-        void onEncodeFrameRate(int frameRate);
+        void onStatisticsUpdate(StatisticsData frameRate);
 
         /**
          * 编码器surfacetexture就绪

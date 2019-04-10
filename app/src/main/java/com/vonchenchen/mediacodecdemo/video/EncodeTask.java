@@ -463,6 +463,11 @@ public class EncodeTask {
 		mMsgQueue.addFirst(codecMsg);
 	}
 
+	public void requestKeyFrame(){
+
+		mSimpleEncoder.requestKeyFrame();
+	}
+
     public void release(){
 
 		if (mHDEncoder != null) {
