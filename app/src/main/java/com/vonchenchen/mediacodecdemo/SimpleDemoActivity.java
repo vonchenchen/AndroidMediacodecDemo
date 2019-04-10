@@ -23,6 +23,7 @@ import com.vonchenchen.mediacodecdemo.video.DecodeTask;
 import com.vonchenchen.mediacodecdemo.video.EncodeInfo;
 import com.vonchenchen.mediacodecdemo.video.Logger;
 import com.vonchenchen.mediacodecdemo.video.VideoEncoderWrapper;
+import com.vonchenchen.mediacodecdemo.video.statistics.BitrateInfoCounter;
 import com.vonchenchen.mediacodecdemo.video.statistics.StatisticsData;
 
 import java.io.FileNotFoundException;
@@ -76,6 +77,8 @@ public class SimpleDemoActivity extends Activity{
     private Button mRequestKeyFrameBtn;
     private TextView mRequestKeyFrameSpendText;
 
+    private BitrateInfoCounter mBitrateInfoCounter;
+
     /** 开始发出请求关键帧时间戳 */
     private long mStartRequestKeyFrameTs = 0;
     /** 接收到关键帧时间戳 */
@@ -91,6 +94,7 @@ public class SimpleDemoActivity extends Activity{
             }
         }
     };
+    private TextView mBitrateInfoText;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -110,6 +114,7 @@ public class SimpleDemoActivity extends Activity{
         mStartRecordH264Btn = findViewById(R.id.btn_startRecord);
         mStartPlayH264Btn = findViewById(R.id.btn_startPlay);
         mFrameRateText = findViewById(R.id.tv_frameRate);
+        mBitrateInfoText = findViewById(R.id.tv_bitrate_info);
 
         mBitrateModeRG = findViewById(R.id.rg_bitratemode);
         mResolutionRG = findViewById(R.id.rg_resolution);
@@ -123,6 +128,7 @@ public class SimpleDemoActivity extends Activity{
         mRequestKeyFrameSpendText = findViewById(R.id.tv_request_key_frame_spend);
 
         mEncodeInfo = new EncodeInfo();
+        mBitrateInfoCounter = new BitrateInfoCounter();
 
         mStartPlayH264Btn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -158,6 +164,7 @@ public class SimpleDemoActivity extends Activity{
                     mDecodeH264Task.initTask(info.width, info.height, mMainSurfaceView, MediaFormat.MIMETYPE_VIDEO_AVC);
                     mDecodeH264Task.startDecodeTask();
                 }else {
+
                     mStartPlayH264Btn.setText("startPlay");
                     mIsStartPlay = false;
                     mDecodeH264Task.stopDecodeTask();
@@ -200,10 +207,32 @@ public class SimpleDemoActivity extends Activity{
                     try {
                         String bitRateName = "";
                         if(mEncodeInfo.bitrate != 0){
-                            bitRateName = mEncodeInfo.bitrate+"";
+                            bitRateName = mEncodeInfo.bitrate/1000+"k";
+                        }
+                        String bitrateCtl = "cbr";
+                        if(mEncodeInfo.bitrateMode == BITRATE_MODE_VBR){
+                            bitrateCtl = "vbr";
                         }
 
-                        mCurrentRecVideoPath = "/sdcard/test_bitrate_"+bitRateName+"_encode_"+fpsStr+".h264";
+                        String resolution = "480P";
+                        if(mCurrentSize == CameraManager.CameraSize.SIZE_480P){
+                            resolution = "480P";
+                        }else if(mCurrentSize == CameraManager.CameraSize.SIZE_720P){
+                            resolution = "720P";
+                        }else {
+                            resolution = "1080P";
+                        }
+
+                        String profile = "base";
+                        if( mEncodeInfo.profile == MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline){
+                            profile = "base";
+                        }else if(mEncodeInfo.profile == MediaCodecInfo.CodecProfileLevel.AVCProfileMain){
+                            profile = "main";
+                        }else{
+                            profile = "hight";
+                        }
+
+                        mCurrentRecVideoPath = "/sdcard/test_"+resolution+"_"+profile+"_"+bitRateName+"_"+fpsStr+"fps_"+bitrateCtl+".h264";
                         mPlayPathEdit.setText(mCurrentRecVideoPath);
 
                         mMediaDataWriter = new MediaDataWriter(mCurrentRecVideoPath);
@@ -223,6 +252,9 @@ public class SimpleDemoActivity extends Activity{
                     mMediaDataWriter = null;
 
                     mStartRecordH264Btn.setText("startRecord");
+
+                    BitrateInfoCounter.BitrateInfo bitrateInfo = mBitrateInfoCounter.count(mEncodeInfo.bitrate);
+                    mBitrateInfoText.setText(bitrateInfo.toString());
                 }
             }
         });
@@ -242,6 +274,9 @@ public class SimpleDemoActivity extends Activity{
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
+
+                        mBitrateInfoCounter.addData(statisticsData.getBitrate());
+
                         mFrameRateText.setText(statisticsData.toString());
                     }
                 });
