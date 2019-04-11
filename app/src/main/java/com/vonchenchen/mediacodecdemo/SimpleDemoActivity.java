@@ -96,6 +96,8 @@ public class SimpleDemoActivity extends Activity{
     };
     private TextView mBitrateInfoText;
 
+    private int mDisplayTick = 0;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -178,6 +180,8 @@ public class SimpleDemoActivity extends Activity{
 
                 if(!CameraManager.getInstance().isCamStart()) {
 
+                    mDisplayTick = 0;
+
                     CameraManager.CamSizeDetailInfo info = CameraManager.getInstance().getCamSize(mCurrentSize);
 
                     //码率
@@ -244,17 +248,17 @@ public class SimpleDemoActivity extends Activity{
                     mVideoEncoderWrapper.startEncode(mMainSurfaceView, info.width, info.height, mFps, mEncodeInfo);
 
                     mStartRecordH264Btn.setText("stopRecord");
+
+                    //测试时间为1分钟
+                    mHandler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            stopRecord();
+                        }
+                    }, 60*1000);
+
                 }else{
-                    CameraManager.getInstance().stopCapture();
-                    mVideoEncoderWrapper.stopEncode();
-
-                    mMediaDataWriter.close();
-                    mMediaDataWriter = null;
-
-                    mStartRecordH264Btn.setText("startRecord");
-
-                    BitrateInfoCounter.BitrateInfo bitrateInfo = mBitrateInfoCounter.count(mEncodeInfo.bitrate);
-                    mBitrateInfoText.setText(bitrateInfo.toString());
+                    stopRecord();
                 }
             }
         });
@@ -277,7 +281,8 @@ public class SimpleDemoActivity extends Activity{
 
                         mBitrateInfoCounter.addData(statisticsData.getBitrate());
 
-                        mFrameRateText.setText(statisticsData.toString());
+                        mDisplayTick++;
+                        mFrameRateText.setText(statisticsData.toString()+"   tick="+mDisplayTick);
                     }
                 });
             }
@@ -492,6 +497,20 @@ public class SimpleDemoActivity extends Activity{
 
         CameraManager.getInstance().closeCamera();
         CameraManager.getInstance().openCamera(mCameraIndex, mCurrentSize, mFps);
+    }
+
+    private void stopRecord(){
+
+        CameraManager.getInstance().stopCapture();
+        mVideoEncoderWrapper.stopEncode();
+
+        mMediaDataWriter.close();
+        mMediaDataWriter = null;
+
+        mStartRecordH264Btn.setText("startRecord");
+
+        BitrateInfoCounter.BitrateInfo bitrateInfo = mBitrateInfoCounter.count(mEncodeInfo.bitrate);
+        mBitrateInfoText.setText(bitrateInfo.toString());
     }
 
     @Override

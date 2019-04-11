@@ -4,11 +4,11 @@ import com.vonchenchen.mediacodecdemo.utils.NumUtils;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 public class BitrateInfoCounter {
 
     private List<Integer> mBitrateList;
+    private int mStdCntSum;
     private int mSum;
 
     public BitrateInfoCounter(){
@@ -25,6 +25,7 @@ public class BitrateInfoCounter {
 
         BitrateInfo bitrateInfo = new BitrateInfo();
 
+        mStdCntSum = 0;
         mSum = 0;
 
         if(mBitrateList.size() <= 0){
@@ -43,11 +44,13 @@ public class BitrateInfoCounter {
                 bitrateInfo.min = data;
             }
 
-            mSum += Math.pow((data - target), 2);
+            mSum += data;
+            mStdCntSum += Math.pow((data - target), 2);
         }
 
-        bitrateInfo.variance = ((double)mSum)/mBitrateList.size();
+        bitrateInfo.variance = ((double) mStdCntSum)/mBitrateList.size();
         bitrateInfo.standardDevivation = Math.sqrt(bitrateInfo.variance);
+        bitrateInfo.average = mSum/mBitrateList.size();
 
         mBitrateList.clear();
         return bitrateInfo;
@@ -56,6 +59,9 @@ public class BitrateInfoCounter {
     public class BitrateInfo{
         public int max;
         public int min;
+
+        /** 平均数 */
+        public int average;
         /** 方差 */
         public double variance;
         /** 标准差 */
@@ -63,11 +69,10 @@ public class BitrateInfoCounter {
 
         @Override
         public String toString() {
-            return "BitrateInfo{" +
-                    "max=" + max/1000+"k" +
-                    ", min=" + min/1000+"k" +
-                    "\n standardDevivation=" + NumUtils.keepTwoDecimals(standardDevivation/1000)+"k" +
-                    '}';
+            return  max/1000+"k" +
+                    "-" + min/1000+"k" +
+                    "-" + NumUtils.keepTwoDecimals(average/1000)+"k" +
+                    "-" + NumUtils.keepTwoDecimals(standardDevivation/1000)+"k";
         }
     }
 }

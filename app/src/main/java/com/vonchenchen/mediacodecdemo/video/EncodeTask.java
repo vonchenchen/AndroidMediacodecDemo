@@ -22,7 +22,7 @@ public class EncodeTask {
 	static private final int MSG_FINISH = 2;
 
 	/** 相机采集最大帧率 */
-	public static final int CAM_MAX_FRAME_RATE = 21;
+	public static final int CAM_MAX_FRAME_RATE = 30;
 
 	private MsgPipe<CodecMsg> mMsgQueue;
 
@@ -264,7 +264,7 @@ public class EncodeTask {
 					//计算丢帧间隔 如果给定帧率小于等于最大帧率 说明在帧率控制范围内 开始控制帧率
 					if(mTargetFrameRate <= CAM_MAX_FRAME_RATE) {
 
-						if(Math.abs(mTargetFrameRate - mRealFrameRate) <= 2){
+						if(Math.abs(mTargetFrameRate - mRealFrameRate) <= 1){
 							return;
 						}
 
