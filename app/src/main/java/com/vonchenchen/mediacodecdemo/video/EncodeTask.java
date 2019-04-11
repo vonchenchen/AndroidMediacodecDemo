@@ -268,16 +268,25 @@ public class EncodeTask {
 							return;
 						}
 
+						int delta = Math.abs(mTargetFrameRate - mRealFrameRate);
 						if (mTargetFrameRate < mRealFrameRate) {
 							//目标帧率 小于真实帧率 需要增加丢帧数 增加丢帧频率 减小丢帧间隔
 							if(mFrameSkipFrameGap > 2) {
-								mFrameSkipFrameGap--;
+								if(delta >= 4){
+									mFrameSkipFrameGap -= 2;
+								}else {
+									mFrameSkipFrameGap--;
+								}
 							}
 
 						}else if(mTargetFrameRate > mRealFrameRate){
 							//目标帧率 大于真实帧率 需要减少丢帧数 降低丢帧频率 增大丢帧间隔
 							if(mFrameSkipFrameGap < CAM_MAX_FRAME_RATE) {
-								mFrameSkipFrameGap++;
+								if(delta >= 4){
+									mFrameSkipFrameGap += 2;
+								}else {
+									mFrameSkipFrameGap++;
+								}
 							}
 						}
 					}
