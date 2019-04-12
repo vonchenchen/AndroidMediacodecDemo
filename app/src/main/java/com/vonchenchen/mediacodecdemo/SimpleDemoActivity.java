@@ -19,6 +19,7 @@ import android.widget.TextView;
 
 import com.vonchenchen.mediacodecdemo.camera.CameraManager;
 import com.vonchenchen.mediacodecdemo.io.MediaDataWriter;
+import com.vonchenchen.mediacodecdemo.utils.AppUtils;
 import com.vonchenchen.mediacodecdemo.video.DecodeTask;
 import com.vonchenchen.mediacodecdemo.video.EncodeInfo;
 import com.vonchenchen.mediacodecdemo.video.Logger;
@@ -26,6 +27,7 @@ import com.vonchenchen.mediacodecdemo.video.VideoEncoderWrapper;
 import com.vonchenchen.mediacodecdemo.video.statistics.BitrateInfoCounter;
 import com.vonchenchen.mediacodecdemo.video.statistics.StatisticsData;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 
 import static android.media.MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR;
@@ -36,6 +38,8 @@ public class SimpleDemoActivity extends Activity{
     private static final String TAG = "SimpleDemoActivity";
 
     private static final int MSG_DISPLAY_I_FRAME_TIME = 1;
+
+    private static final String BASE_PATH = "/sdcard/test/";
 
     private SurfaceView mMainSurfaceView;
 
@@ -97,12 +101,21 @@ public class SimpleDemoActivity extends Activity{
     private TextView mBitrateInfoText;
 
     private int mDisplayTick = 0;
+    private TextView mVersionText;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_simpledemo);
+
+        File file = new File(BASE_PATH);
+        if(!file.exists()){
+            file.mkdirs();
+        }
+
+        mVersionText = findViewById(R.id.tv_version);
+        mVersionText.setText("version="+ AppUtils.packageName(SimpleDemoActivity.this));
 
         mPlayPathEdit = findViewById(R.id.tv_play_path);
 
@@ -184,59 +197,8 @@ public class SimpleDemoActivity extends Activity{
 
                     CameraManager.CamSizeDetailInfo info = CameraManager.getInstance().getCamSize(mCurrentSize);
 
-                    //码率
-                    String bitRateStr = mBitrateEdit.getText().toString().trim();
-                    if(TextUtils.isEmpty(bitRateStr)){
-                        mEncodeInfo.bitrate = 0;
-                    }else{
-                        mEncodeInfo.bitrate = Integer.parseInt(bitRateStr) * 1000;
-                    }
-
-                    //关键帧间隔
-                    String keyFrameIntervalStr = mIFrameIntervalEdit.getText().toString().trim();
-                    if(TextUtils.isEmpty(keyFrameIntervalStr)){
-                        mEncodeInfo.keyFrameInterval = 0;
-                    }else {
-                        mEncodeInfo.keyFrameInterval = Integer.parseInt(keyFrameIntervalStr);
-                    }
-
-                    //编码帧率
-                    String fpsStr = mFpsEdit.getText().toString().trim();
-                    if(TextUtils.isEmpty(fpsStr)){
-
-                    }else {
-                        mFps = Integer.parseInt(fpsStr);
-                    }
-
-                    try {
-                        String bitRateName = "";
-                        if(mEncodeInfo.bitrate != 0){
-                            bitRateName = mEncodeInfo.bitrate/1000+"k";
-                        }
-                        String bitrateCtl = "cbr";
-                        if(mEncodeInfo.bitrateMode == BITRATE_MODE_VBR){
-                            bitrateCtl = "vbr";
-                        }
-
-                        String resolution = "480P";
-                        if(mCurrentSize == CameraManager.CameraSize.SIZE_480P){
-                            resolution = "480P";
-                        }else if(mCurrentSize == CameraManager.CameraSize.SIZE_720P){
-                            resolution = "720P";
-                        }else {
-                            resolution = "1080P";
-                        }
-
-                        String profile = "base";
-                        if( mEncodeInfo.profile == MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline){
-                            profile = "base";
-                        }else if(mEncodeInfo.profile == MediaCodecInfo.CodecProfileLevel.AVCProfileMain){
-                            profile = "main";
-                        }else{
-                            profile = "hight";
-                        }
-
-                        mCurrentRecVideoPath = "/sdcard/test_"+resolution+"_"+profile+"_"+bitRateName+"_"+fpsStr+"fps_"+bitrateCtl+".h264";
+                    try{
+                        mCurrentRecVideoPath = getCurrentFileName();
                         mPlayPathEdit.setText(mCurrentRecVideoPath);
 
                         mMediaDataWriter = new MediaDataWriter(mCurrentRecVideoPath);
@@ -373,6 +335,7 @@ public class SimpleDemoActivity extends Activity{
                 }else if(i == R.id.rb_cbr){
                     mEncodeInfo.bitrateMode = BITRATE_MODE_CBR;
                 }
+                updatePathText();
             }
         });
 
@@ -386,6 +349,7 @@ public class SimpleDemoActivity extends Activity{
                 }else if(i == R.id.rb_1080p){
                     mCurrentSize = CameraManager.CameraSize.SIZE_1080P;
                 }
+                updatePathText();
 
                 CameraManager.getInstance().closeCamera();
                 CameraManager.getInstance().openCamera(mCameraIndex, mCurrentSize, mFps);
@@ -404,6 +368,8 @@ public class SimpleDemoActivity extends Activity{
 
                     index = 1;
                 }
+
+                updatePathText();
 
                 if(index != mCameraIndex){
                     CameraManager.getInstance().closeCamera();
@@ -426,6 +392,8 @@ public class SimpleDemoActivity extends Activity{
 
                     mEncodeInfo.profile = MediaCodecInfo.CodecProfileLevel.AVCProfileHigh;
                 }
+
+                updatePathText();
             }
         });
 
@@ -441,6 +409,7 @@ public class SimpleDemoActivity extends Activity{
                     mEncodeInfo.bitrate = Integer.parseInt(bitRateStr) * 1000;
                 }
 
+                updatePathText();
                 mVideoEncoderWrapper.changeBitrate(mEncodeInfo.bitrate);
             }
         });
@@ -464,6 +433,7 @@ public class SimpleDemoActivity extends Activity{
                 }else {
                     mFps = Integer.parseInt(fpsStr);
                 }
+                updatePathText();
                 mVideoEncoderWrapper.changeFramerate(mFps);
             }
         });
@@ -495,8 +465,73 @@ public class SimpleDemoActivity extends Activity{
 
         mFpsEdit.setText(mFps+"");
 
+        updatePathText();
+
         CameraManager.getInstance().closeCamera();
         CameraManager.getInstance().openCamera(mCameraIndex, mCurrentSize, mFps);
+    }
+
+    private String getCurrentFileName() {
+
+        //码率
+        String bitRateStr = mBitrateEdit.getText().toString().trim();
+        if (TextUtils.isEmpty(bitRateStr)) {
+            mEncodeInfo.bitrate = 0;
+        } else {
+            mEncodeInfo.bitrate = Integer.parseInt(bitRateStr) * 1000;
+        }
+
+        //关键帧间隔
+        String keyFrameIntervalStr = mIFrameIntervalEdit.getText().toString().trim();
+        if (TextUtils.isEmpty(keyFrameIntervalStr)) {
+            mEncodeInfo.keyFrameInterval = 0;
+        } else {
+            mEncodeInfo.keyFrameInterval = Integer.parseInt(keyFrameIntervalStr);
+        }
+
+        //编码帧率
+        String fpsStr = mFpsEdit.getText().toString().trim();
+        if (TextUtils.isEmpty(fpsStr)) {
+
+        } else {
+            mFps = Integer.parseInt(fpsStr);
+        }
+
+
+        String bitRateName = "";
+        if (mEncodeInfo.bitrate != 0) {
+            bitRateName = mEncodeInfo.bitrate / 1000 + "k";
+        }
+        String bitrateCtl = "cbr";
+        if (mEncodeInfo.bitrateMode == BITRATE_MODE_VBR) {
+            bitrateCtl = "vbr";
+        }
+
+        String resolution = "480P";
+        if (mCurrentSize == CameraManager.CameraSize.SIZE_480P) {
+            resolution = "480P";
+        } else if (mCurrentSize == CameraManager.CameraSize.SIZE_720P) {
+            resolution = "720P";
+        } else {
+            resolution = "1080P";
+        }
+
+        String profile = "base";
+        if (mEncodeInfo.profile == MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline) {
+            profile = "base";
+        } else if (mEncodeInfo.profile == MediaCodecInfo.CodecProfileLevel.AVCProfileMain) {
+            profile = "main";
+        } else {
+            profile = "hight";
+        }
+
+        return BASE_PATH + "264_" + resolution + "_" + profile + "_" + bitRateName + "_" + fpsStr + "fps_" + bitrateCtl + ".h264";
+    }
+
+    private void updatePathText(){
+
+        mCurrentRecVideoPath = getCurrentFileName();
+        mPlayPathEdit.setText(mCurrentRecVideoPath);
     }
 
     private void stopRecord(){
@@ -504,8 +539,10 @@ public class SimpleDemoActivity extends Activity{
         CameraManager.getInstance().stopCapture();
         mVideoEncoderWrapper.stopEncode();
 
-        mMediaDataWriter.close();
-        mMediaDataWriter = null;
+        if(mMediaDataWriter != null) {
+            mMediaDataWriter.close();
+            mMediaDataWriter = null;
+        }
 
         mStartRecordH264Btn.setText("startRecord");
 

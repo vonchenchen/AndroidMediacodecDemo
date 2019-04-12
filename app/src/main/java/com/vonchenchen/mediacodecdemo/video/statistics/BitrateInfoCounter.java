@@ -8,8 +8,6 @@ import java.util.List;
 public class BitrateInfoCounter {
 
     private List<Integer> mBitrateList;
-    private int mStdCntSum;
-    private int mSum;
 
     public BitrateInfoCounter(){
 
@@ -25,32 +23,38 @@ public class BitrateInfoCounter {
 
         BitrateInfo bitrateInfo = new BitrateInfo();
 
-        mStdCntSum = 0;
-        mSum = 0;
+        int standCntSum = 0;
+        int sum = 0;
 
         if(mBitrateList.size() <= 0){
             return bitrateInfo;
         }
 
-        bitrateInfo.min = mBitrateList.get(0);
-        bitrateInfo.max = mBitrateList.get(0);
+        bitrateInfo.min = mBitrateList.get(0)*8;
+        bitrateInfo.max = mBitrateList.get(0)*8;
 
         for(int i=0; i<mBitrateList.size(); i++){
 
             int data = mBitrateList.get(i);
+
             if(data > bitrateInfo.max){
                 bitrateInfo.max = data;
             }else if(data < bitrateInfo.min){
                 bitrateInfo.min = data;
             }
 
-            mSum += data;
-            mStdCntSum += Math.pow((data - target), 2);
+            sum += data;
         }
 
-        bitrateInfo.variance = ((double) mStdCntSum)/mBitrateList.size();
+        bitrateInfo.average = sum/mBitrateList.size();
+
+        for(int i=0; i<mBitrateList.size(); i++){
+
+            int data = mBitrateList.get(i);
+            standCntSum += Math.pow((data - bitrateInfo.average), 2);
+        }
+        bitrateInfo.variance = ((double) standCntSum)/mBitrateList.size();
         bitrateInfo.standardDevivation = Math.sqrt(bitrateInfo.variance);
-        bitrateInfo.average = mSum/mBitrateList.size();
 
         mBitrateList.clear();
         return bitrateInfo;
@@ -64,6 +68,8 @@ public class BitrateInfoCounter {
         public int average;
         /** 方差 */
         public double variance;
+        /** 误差 */
+        public double errorDevivation;
         /** 标准差 */
         public double standardDevivation;
 
@@ -72,7 +78,7 @@ public class BitrateInfoCounter {
             return  max/1000+"k" +
                     "-" + min/1000+"k" +
                     "-" + NumUtils.keepTwoDecimals(average/1000)+"k" +
-                    "-" + NumUtils.keepTwoDecimals(standardDevivation/1000)+"k";
+                    "-" + NumUtils.keepTwoDecimals(standardDevivation /1000)+"k";
         }
     }
 }

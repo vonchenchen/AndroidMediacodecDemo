@@ -498,7 +498,7 @@ public class SimpleEncoder {
                             mOnCricularEncoderEventListener.onKeyFrameReceive(keyframe, keyframe.length, mVideoWidth, mVideoHeight);
                         }
 
-                        mStatBitrate += keyframe.length;
+                        mStatBitrate += keyframe.length * 8;
 
                         updateEncodeStatistics();
 
@@ -510,7 +510,7 @@ public class SimpleEncoder {
                             mOnCricularEncoderEventListener.onOtherFrameReceive(outData, outData.length, mVideoWidth, mVideoHeight);
                         }
 
-                        mStatBitrate += outData.length;
+                        mStatBitrate += outData.length * 8;
 
                         updateEncodeStatistics();
                     }

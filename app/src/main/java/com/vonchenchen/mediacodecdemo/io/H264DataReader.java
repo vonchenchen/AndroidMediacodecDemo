@@ -19,55 +19,6 @@ public class H264DataReader extends MediaDataReader implements IStreamDataReader
         mDataRearIndex = 0;
     }
 
-//    @Override
-//    public int readNextFrame(){
-//        Logger.i(TAG, "[readNextFrame] mDataRearIndex="+mDataRearIndex+" length ="+(mData.length - mDataRearIndex));
-//        int length = read(mData, mDataRearIndex, mData.length - mDataRearIndex);
-//        if(length <= 0){
-//            return length;
-//        }
-//        mDataRearIndex = length;
-//        for(int mainIndex=0; mainIndex<mDataRearIndex; ){
-//
-//            if(isH264Header(mData, mainIndex)) {
-//
-//                if(mainIndex != 0){
-//                    //数组整体前移
-//                    System.arraycopy(mData, mainIndex, mData, 0, length-mainIndex);
-//                }
-//                boolean isFind = false;
-//
-//                for(int frameRareIndex=mainIndex+1; frameRareIndex<mDataRearIndex; frameRareIndex++){
-//                    if(isH264Header(mData, frameRareIndex)){
-//
-//                        //卡顿可能是idr分开读取引起
-//                        int dataLen = frameRareIndex-mainIndex;
-//                        if(mOnDataParsedListener != null){
-//                            mOnDataParsedListener.onParsed(mData, mainIndex, dataLen);
-//                        }
-//                        System.arraycopy(mData, dataLen, mData, 0, mDataRearIndex-dataLen);
-//                        mDataRearIndex -= dataLen;
-//
-//                        if(mDataRearIndex <= 0){
-//                            mDataRearIndex = 0;
-//                            return length;
-//                        }
-//                        isFind = true;
-//                        mainIndex = 0;
-//                        break;
-//                    }
-//                }
-//                if(!isFind){
-//                    return length;
-//                }
-//            }else {
-//                mainIndex++;
-//            }
-//        }
-//
-//        return length;
-//    }
-
     @Override
     public int readNextFrame(){
 
