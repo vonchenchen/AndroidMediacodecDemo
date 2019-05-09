@@ -193,8 +193,12 @@ public class SimpleEncoder {
             format.setInteger("bitrate-mode", BITRATE_MODE_CBR);
         }
 
-        format.setInteger(MediaFormat.KEY_PROFILE , mEncodeInfo.profile);
-        format.setInteger("level" , MediaCodecInfo.CodecProfileLevel.AVCLevel31);
+        if(mEncodeInfo != null && mEncodeInfo.profile != 0) {
+            format.setInteger(MediaFormat.KEY_PROFILE, mEncodeInfo.profile);
+        }else {
+            format.setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline);
+        }
+        format.setInteger("level", MediaCodecInfo.CodecProfileLevel.AVCLevel31);
 
         if(mEncodeInfo != null && mEncodeInfo.keyFrameInterval != 0){
             format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, mEncodeInfo.keyFrameInterval);
@@ -207,7 +211,9 @@ public class SimpleEncoder {
         MediaCodec videoEncoder = null;
         try {
             videoEncoder = MediaCodec.createEncoderByType(VIDEO_MIME_TYPE);
-            videoEncoder.reset();
+            if(android.os.Build.VERSION.SDK_INT >= 20) {
+                videoEncoder.reset();
+            }
             videoEncoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
         } catch (IOException e) {
             e.printStackTrace();
@@ -231,7 +237,9 @@ public class SimpleEncoder {
      */
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
     void shutdown() {
-        if (VERBOSE) Logger.d(TAG, "releasing encoder objects");
+        if (VERBOSE){
+            Logger.d(TAG, "releasing encoder objects");
+        }
 
 
         if (mVideoEncoderThread.getId() != Thread.currentThread().getId()) {
@@ -256,7 +264,9 @@ public class SimpleEncoder {
         if (mVideoEncoder != null) {
             try {
                 mVideoEncoder.stop();
-                mVideoEncoder.reset();
+                if(android.os.Build.VERSION.SDK_INT >= 20) {
+                    mVideoEncoder.reset();
+                }
                 mVideoEncoder.release();
                 mVideoEncoder = null;
             } catch (Exception e) {
