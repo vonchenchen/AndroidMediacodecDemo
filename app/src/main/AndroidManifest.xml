@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
 
     <application
         android:allowBackup="true"
@@ -12,6 +13,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:largeHeap="true"
         android:theme="@style/AppTheme">
         <activity android:name=".FlashActivity">
             <intent-filter>
@@ -24,6 +26,8 @@
         <activity android:name=".OpenglDemoActivity"/>
         <activity android:name=".DummyActivity"/>
         <activity android:name=".SimpleDemoActivity"/>
+        <activity android:name=".RecordScreenTestActivity"/>
+        <activity android:name=".video.screen.test.RecordScreenTest1Activity"/>
     </application>
 
 </manifest>

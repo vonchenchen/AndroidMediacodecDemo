@@ -102,6 +102,7 @@ public class SimpleDemoActivity extends Activity{
 
     private int mDisplayTick = 0;
     private TextView mVersionText;
+    private byte[] data;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -113,6 +114,8 @@ public class SimpleDemoActivity extends Activity{
         if(!file.exists()){
             file.mkdirs();
         }
+
+        data = new byte[1024*1024*230];
 
         mVersionText = findViewById(R.id.tv_version);
         mVersionText.setText("version="+ AppUtils.packageName(SimpleDemoActivity.this));
@@ -212,12 +215,12 @@ public class SimpleDemoActivity extends Activity{
                     mStartRecordH264Btn.setText("stopRecord");
 
                     //测试时间为1分钟
-                    mHandler.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            stopRecord();
-                        }
-                    }, 60*1000);
+//                    mHandler.postDelayed(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            stopRecord();
+//                        }
+//                    }, 60*1000);
 
                 }else{
                     stopRecord();
@@ -457,6 +460,13 @@ public class SimpleDemoActivity extends Activity{
                 mStartRequestKeyFrameTs = System.currentTimeMillis();
 
                 mVideoEncoderWrapper.requestKeyFrame();
+            }
+        });
+
+        findViewById(R.id.btn_auto_test).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
             }
         });
 

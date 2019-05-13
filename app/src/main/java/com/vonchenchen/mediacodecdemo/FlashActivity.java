@@ -13,6 +13,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 
+import com.vonchenchen.mediacodecdemo.video.screen.test.RecordScreenTest1Activity;
+
 public class FlashActivity extends AppCompatActivity {
 
     private static final String TAG = "FlashActivity";
@@ -29,6 +31,20 @@ public class FlashActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 startActivity(new Intent(FlashActivity.this, SimpleDemoActivity.class));
+            }
+        });
+
+        findViewById(R.id.screenRecord).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(FlashActivity.this, RecordScreenTestActivity.class));
+            }
+        });
+
+        findViewById(R.id.screenRecord1).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(FlashActivity.this, RecordScreenTest1Activity.class));
             }
         });
 
