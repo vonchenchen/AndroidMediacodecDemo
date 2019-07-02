@@ -13,7 +13,7 @@ android {
     defaultConfig {
         applicationId "com.vonchenchen.mediacodecdemo"
         minSdkVersion 19
-        targetSdkVersion 21
+        targetSdkVersion 26
         versionCode 3
         versionName "1.0.2"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
@@ -29,6 +29,11 @@ android {
             //signingConfig signingConfigs.signConfig
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
+        }
+    }
+    externalNativeBuild {
+        ndkBuild {
+            path '../mediademo/jni/Android.mk'
         }
     }
 }

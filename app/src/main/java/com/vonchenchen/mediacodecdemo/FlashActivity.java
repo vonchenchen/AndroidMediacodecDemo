@@ -13,6 +13,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 
+import com.vonchenchen.mediacodecdemo.video.screen.test.RecordScreenH264Activity;
 import com.vonchenchen.mediacodecdemo.video.screen.test.RecordScreenTest1Activity;
 
 public class FlashActivity extends AppCompatActivity {
@@ -34,17 +35,24 @@ public class FlashActivity extends AppCompatActivity {
             }
         });
 
-        findViewById(R.id.screenRecord).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                startActivity(new Intent(FlashActivity.this, RecordScreenTestActivity.class));
-            }
-        });
+//        findViewById(R.id.screenRecord).setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                startActivity(new Intent(FlashActivity.this, RecordScreenTestActivity.class));
+//            }
+//        });
 
         findViewById(R.id.screenRecord1).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 startActivity(new Intent(FlashActivity.this, RecordScreenTest1Activity.class));
+            }
+        });
+
+        findViewById(R.id.screenRecord2).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(FlashActivity.this, RecordScreenH264Activity.class));
             }
         });
 

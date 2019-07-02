@@ -14,6 +14,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import com.vonchenchen.demo.YuvUtils;
 import com.vonchenchen.mediacodecdemo.io.MediaDataWriter;
 import com.vonchenchen.mediacodecdemo.video.Logger;
 import com.vonchenchen.mediacodecdemo.video.ScreenRecorder;
@@ -85,7 +86,8 @@ public class RecordScreenTestActivity extends Activity {
 //                    e.printStackTrace();
 //                }
                 long start = System.currentTimeMillis();
-                conver_argb_to_i420(mI420Data, data, width, height);
+                //conver_argb_to_i420(mI420Data, data, width, height);
+                YuvUtils.testARGBtoI420(mI420Data, width, height);
                 long end = System.currentTimeMillis();
 
                 Logger.i(TAG, "lidechen_test spend="+(end-start));

@@ -21,6 +21,7 @@ import android.util.DisplayMetrics;
 import android.view.Surface;
 import android.widget.Toast;
 
+import com.vonchenchen.mediacodecdemo.video.DirectEncoder;
 import com.vonchenchen.mediacodecdemo.video.Logger;
 import com.vonchenchen.mediacodecdemo.video.SimpleEncoder;
 import com.vonchenchen.mediacodecdemo.video.statistics.StatisticsData;
@@ -48,8 +49,8 @@ public class ScreenCaptor {
     private int mScreenHeight;
     private int mScreenDpi;
 
-    private MediaCodec mVideoEncoder;
     private ImageReader mImageReader;
+    private DirectEncoder mDirectEncoder;
 
     private byte[] mRGBAImageData = null;
 
@@ -84,7 +85,8 @@ public class ScreenCaptor {
         mMediaProjection = mMediaProjectionManager.getMediaProjection(resultCode, data);
     }
 
-    public void startCapture(){
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    public void startCaptureImage(){
 
         mMetrics = new DisplayMetrics();
         mBaseActivity.getWindowManager().getDefaultDisplay().getMetrics(mMetrics);
@@ -133,12 +135,34 @@ public class ScreenCaptor {
 
     public void stopCapture(){
 
-        if(mVideoEncoder != null){
-            mVideoEncoder.release();
-        }
-        mVideoEncoder = null;
+        mVirtualDisplay.release();
+    }
+
+    public void startCaptureStream(){
+
+        mMetrics = new DisplayMetrics();
+        mBaseActivity.getWindowManager().getDefaultDisplay().getMetrics(mMetrics);
+
+        mScreenWidth = mMetrics.widthPixels;
+        mScreenHeight = mMetrics.heightPixels;
+        mScreenDpi = mMetrics.densityDpi;
+
+        mDirectEncoder = new DirectEncoder(mScreenWidth, mScreenHeight, 20, null, null);
+        Surface encodeSurface = mDirectEncoder.getInputSurface();
+        mDirectEncoder.start();
+
+        mVirtualDisplay = mMediaProjection.createVirtualDisplay("MainScreen", mScreenWidth, mScreenHeight, mScreenDpi,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, encodeSurface, null, null);
+    }
+
+    public void stopCaptureStream(){
 
         mVirtualDisplay.release();
+        if(mDirectEncoder != null){
+            mDirectEncoder.stop();
+            mDirectEncoder.release();
+            mDirectEncoder = null;
+        }
     }
 
     private OnImageRecvListener mOnImageRecvListener;
@@ -147,7 +171,15 @@ public class ScreenCaptor {
         mOnImageRecvListener =listener;
     }
 
+    private SimpleEncoder.OnCricularEncoderEventListener mOnCricularEncoderEventListener = null;
+
+    public void setOnCricularEncoderEventListener(SimpleEncoder.OnCricularEncoderEventListener listener){
+        mOnCricularEncoderEventListener = listener;
+    }
+
     public interface OnImageRecvListener{
         void onImageRecv(byte[] data, int width, int height);
     }
+
+
 }

@@ -12,18 +12,23 @@
         android:orientation="vertical">
         <Button
             android:id="@+id/next"
-            android:layout_width="80dp"
+            android:layout_width="wrap_content"
             android:layout_height="40dp"
             android:text="cameraTest"/>
-        <Button
-            android:id="@+id/screenRecord"
-            android:layout_width="80dp"
-            android:layout_height="40dp"
-            android:text="screenRecordTest"/>
+        <!--<Button-->
+            <!--android:id="@+id/screenRecord"-->
+            <!--android:layout_width="80dp"-->
+            <!--android:layout_height="40dp"-->
+            <!--android:text="screenRecordTest"/>-->
         <Button
             android:id="@+id/screenRecord1"
-            android:layout_width="80dp"
+            android:layout_width="wrap_content"
             android:layout_height="40dp"
-            android:text="screenRecordTest1"/>
+            android:text="screenRecordBitmap"/>
+        <Button
+            android:id="@+id/screenRecord2"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="screenRecordH264"/>
     </LinearLayout>
 </RelativeLayout>

@@ -225,7 +225,7 @@ public class SimpleEncoder {
     /**
      * Returns the encoder's input surface.
      */
-    Surface getInputSurface() {
+    public Surface getInputSurface() {
         return mInputSurface;
     }
 

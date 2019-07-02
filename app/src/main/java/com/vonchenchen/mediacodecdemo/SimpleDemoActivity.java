@@ -3,7 +3,9 @@ package com.vonchenchen.mediacodecdemo;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.SurfaceTexture;
+import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
+import android.media.MediaCodecList;
 import android.media.MediaFormat;
 import android.os.Bundle;
 import android.os.Handler;
@@ -29,6 +31,8 @@ import com.vonchenchen.mediacodecdemo.video.statistics.StatisticsData;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.Arrays;
 
 import static android.media.MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR;
 import static android.media.MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR;
@@ -103,6 +107,7 @@ public class SimpleDemoActivity extends Activity{
     private int mDisplayTick = 0;
     private TextView mVersionText;
     private byte[] data;
+    private TextView mMediaCodecInfoText;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -470,10 +475,15 @@ public class SimpleDemoActivity extends Activity{
             }
         });
 
+        mMediaCodecInfoText = findViewById(R.id.tv_mediacodec_info);
+
         mBitrateEdit = findViewById(R.id.et_bitrate);
         mIFrameIntervalEdit = findViewById(R.id.et_iframeInterval);
 
         mFpsEdit.setText(mFps+"");
+
+        String mediaCodecInfoStr = getMediaCodecInfo();
+        mMediaCodecInfoText.setText(mediaCodecInfoStr);
 
         updatePathText();
 
@@ -564,5 +574,75 @@ public class SimpleDemoActivity extends Activity{
     protected void onDestroy() {
         super.onDestroy();
         CameraManager.getInstance().closeCamera();
+    }
+
+    private String getMediaCodecInfo(){
+
+        StringBuilder sb = new StringBuilder();
+
+        int numCodecs = MediaCodecList.getCodecCount();
+        MediaCodecInfo codecInfo = null;
+
+        Logger.e(TAG, "numCodecs="+numCodecs);
+        sb.append("numCodecs="+numCodecs);
+        sb.append("\n");
+
+        for (int i = 0; i < numCodecs; i++) {
+
+            MediaCodecInfo info = MediaCodecList.getCodecInfoAt(i);
+            if (!info.isEncoder()) {
+                continue;
+            }
+
+            String[] types = info.getSupportedTypes();
+            boolean found = false;
+
+            for (int j = 0; j < types.length; j++) {
+//                if (types[j].equals("video/avc")) {
+//                    System.out.println("found");
+//                    found = true;
+//                }
+//            }
+//            if (!found)
+//                continue;
+                codecInfo = info;
+                //}
+
+                Logger.e(TAG, "Found " + codecInfo.getName() + " supporting " + types[j]);
+                sb.append("Found " + codecInfo.getName() + " supporting " + types[j]);
+                sb.append("\n");
+
+                // Find a color profile that the codec supports
+                MediaCodecInfo.CodecCapabilities capabilities = codecInfo.getCapabilitiesForType(types[j]);
+                Logger.e(TAG,
+                        "length-" + capabilities.colorFormats.length + "==" + Arrays.toString(capabilities.colorFormats));
+                sb.append("length-" + capabilities.colorFormats.length + "==" + Arrays.toString(capabilities.colorFormats));
+                sb.append("\n");
+
+                for (int k = 0; k < capabilities.colorFormats.length; k++) {
+
+                    switch (capabilities.colorFormats[j]) {
+                        case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar:
+                        case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar:
+                        case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedSemiPlanar:
+                        case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedPlanar:
+                        case MediaCodecInfo.CodecCapabilities.COLOR_QCOM_FormatYUV420SemiPlanar:
+                        case MediaCodecInfo.CodecCapabilities.COLOR_TI_FormatYUV420PackedSemiPlanar:
+
+                            Logger.e(TAG, "supported color format::" + capabilities.colorFormats[k]);
+                            sb.append("supported color format::" + capabilities.colorFormats[k]);
+                            sb.append("\n");
+                            //return capabilities.colorFormats[i];
+                        default:
+                            Logger.e(TAG, "unsupported color format " + capabilities.colorFormats[k]);
+                            sb.append("unsupported color format " + capabilities.colorFormats[k]);
+                            sb.append("\n");
+                            break;
+                    }
+                }
+            }
+            //return -1;
+        }
+        return sb.toString();
     }
 }

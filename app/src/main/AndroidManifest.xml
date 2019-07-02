@@ -28,6 +28,7 @@
         <activity android:name=".SimpleDemoActivity"/>
         <activity android:name=".RecordScreenTestActivity"/>
         <activity android:name=".video.screen.test.RecordScreenTest1Activity"/>
+        <activity android:name=".video.screen.test.RecordScreenH264Activity"/>
     </application>
 
 </manifest>
